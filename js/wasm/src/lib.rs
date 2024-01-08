@@ -1,25 +1,25 @@
-use oca_bundle::state::oca::overlay::entry::Entries;
-use oca_bundle::state::oca::overlay::entry_code::EntryCodes;
-use oca_bundle::state::oca::overlay::information::Information;
-use oca_bundle::state::oca::overlay::format::Formats;
-use oca_bundle::state::oca::overlay::conformance::Conformances;
-use oca_bundle::state::oca::overlay::conditional::Conditionals;
+use isolang::Language;
+use oca_ast::ast::NestedAttrType;
 use oca_bundle::state::oca::overlay::cardinality::Cardinalitys;
 use oca_bundle::state::oca::overlay::character_encoding::CharacterEncodings;
+use oca_bundle::state::oca::overlay::conditional::Conditionals;
+use oca_bundle::state::oca::overlay::conformance::Conformances;
+use oca_bundle::state::oca::overlay::credential_layout::CredentialLayouts;
+use oca_bundle::state::oca::overlay::entry::Entries;
+use oca_bundle::state::oca::overlay::entry_code::EntryCodes;
+use oca_bundle::state::oca::overlay::form_layout::FormLayouts;
+use oca_bundle::state::oca::overlay::format::Formats;
+use oca_bundle::state::oca::overlay::information::Information;
 use oca_bundle::state::oca::overlay::label::Labels;
 use oca_bundle::state::oca::overlay::meta::Metas;
-use oca_bundle::state::oca::overlay::credential_layout::CredentialLayouts;
-use oca_bundle::state::oca::overlay::form_layout::FormLayouts;
-use isolang::Language;
 use oca_bundle::state::{
     attribute::Attribute as AttributeRaw,
     encoding::Encoding,
-    entry_codes::EntryCodes as EntryCodesRaw,
     entries::EntriesElement as EntriesElementRaw,
-    oca::{OCABundle as OCABundleRaw, OCABox as OCABoxRaw},
+    entry_codes::EntryCodes as EntryCodesRaw,
+    oca::{OCABox as OCABoxRaw, OCABundle as OCABundleRaw},
     validator,
 };
-use oca_ast::ast::NestedAttrType;
 use oca_bundle::Encode;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -73,31 +73,31 @@ impl OCABox {
 
     #[wasm_bindgen(js_name = "load")]
     pub fn load(mut self, oca_bundle: OCABundle) -> Result<OCABox, JsValue> {
-        self.raw = OCABoxRaw::from(
-            serde_wasm_bindgen::from_value::<OCABundleRaw>(JsValue::from(
-                oca_bundle,
-            ))?,
-        );
+        self.raw = OCABoxRaw::from(serde_wasm_bindgen::from_value::<OCABundleRaw>(
+            JsValue::from(oca_bundle),
+        )?);
         Ok(self)
     }
 
     #[wasm_bindgen(js_name = "attributes")]
     pub fn attributes(&self) -> AttributesTSType {
         AttributesTSType::from(
-            self.raw.attributes
+            self.raw
+                .attributes
                 .values()
                 .collect::<Vec<_>>()
                 .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap()
+                .unwrap(),
         )
     }
 
     #[wasm_bindgen(js_name = "meta")]
     pub fn meta(&self) -> MetaTSType {
         MetaTSType::from(
-            self.raw.meta
+            self.raw
+                .meta
                 .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap()
+                .unwrap(),
         )
     }
 
@@ -110,9 +110,10 @@ impl OCABox {
     pub fn to_ast(&self) -> AST {
         let oca_bundle = self.raw.clone().generate_bundle();
         AST::from(
-            oca_bundle.to_ast()
+            oca_bundle
+                .to_ast()
                 .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap()
+                .unwrap(),
         )
     }
 
@@ -156,8 +157,7 @@ impl OCABox {
     pub fn generate_bundle(&self) -> OCABundle {
         let mut raw = self.raw.clone();
         let oca_bundle_json_str =
-            String::from_utf8(raw.generate_bundle().encode().unwrap())
-                .unwrap();
+            String::from_utf8(raw.generate_bundle().encode().unwrap()).unwrap();
         OCABundle::from(
             serde_json::from_str::<serde_json::Value>(&oca_bundle_json_str)
                 .unwrap()
@@ -207,8 +207,7 @@ impl Validator {
             errors: Vec<String>,
         }
         let return_result: ReturnResult;
-        match serde_wasm_bindgen::from_value::<OCABundleRaw>(oca_bundle.into())
-        {
+        match serde_wasm_bindgen::from_value::<OCABundleRaw>(oca_bundle.into()) {
             Ok(oca_bundle_raw) => {
                 let result = self.raw.validate(&oca_bundle_raw);
                 match result {
@@ -315,8 +314,7 @@ impl Attribute {
 
     #[wasm_bindgen(js_name = "setConformance")]
     pub fn set_conformance(mut self, conformance: ConformanceOptions) -> Self {
-        let conformance_raw: String =
-            serde_wasm_bindgen::from_value(conformance.into()).unwrap();
+        let conformance_raw: String = serde_wasm_bindgen::from_value(conformance.into()).unwrap();
         self.raw.set_conformance(conformance_raw);
         self
     }
@@ -360,22 +358,23 @@ impl Attribute {
         let mut lang_entries: HashMap<Language, HashMap<String, String>> = HashMap::new();
 
         for (entry_code, translations) in entry_translations.iter() {
-          codes.push(entry_code.clone());
-          for (lang, entry) in translations.iter() {
-            let language_raw = Language::from_639_3(lang).unwrap();
-            if let Some(entry_tr) = lang_entries.get_mut(&language_raw) {
-              entry_tr.insert(entry_code.clone(), entry.clone());
-            } else {
-              let mut entry_tr: HashMap<String, String> = HashMap::new();
-              entry_tr.insert(entry_code.clone(), entry.clone());
-              lang_entries.insert(language_raw, entry_tr);
+            codes.push(entry_code.clone());
+            for (lang, entry) in translations.iter() {
+                let language_raw = Language::from_639_3(lang).unwrap();
+                if let Some(entry_tr) = lang_entries.get_mut(&language_raw) {
+                    entry_tr.insert(entry_code.clone(), entry.clone());
+                } else {
+                    let mut entry_tr: HashMap<String, String> = HashMap::new();
+                    entry_tr.insert(entry_code.clone(), entry.clone());
+                    lang_entries.insert(language_raw, entry_tr);
+                }
             }
-          }
         }
 
         self.raw.set_entry_codes(EntryCodesRaw::Array(codes));
         for (lang, translations) in lang_entries.iter() {
-          self.raw.set_entry(*lang, EntriesElementRaw::Object(translations.clone()));
+            self.raw
+                .set_entry(*lang, EntriesElementRaw::Object(translations.clone()));
         }
 
         self

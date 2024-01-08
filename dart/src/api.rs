@@ -238,9 +238,9 @@ impl OcaBundle {
             .overlays
             .iter()
             .map(|overlay| {
-                OcaOverlay(RustOpaque::new(Mutex::new(oca_bundle::dyn_clone::clone_box(
-                    &**overlay,
-                ))))
+                OcaOverlay(RustOpaque::new(Mutex::new(
+                    oca_bundle::dyn_clone::clone_box(&**overlay),
+                )))
             })
             .collect()
     }
@@ -295,6 +295,7 @@ impl OcaMap {
 }
 
 pub fn load_oca(json: String) -> Result<OcaBundle> {
-    let bundle = oca_bundle::controller::load_oca(&mut json.as_bytes()).map_err(|err| anyhow!(err))?;
+    let bundle =
+        oca_bundle::controller::load_oca(&mut json.as_bytes()).map_err(|err| anyhow!(err))?;
     Ok(OcaBundle(RustOpaque::new(Mutex::new(bundle))))
 }
