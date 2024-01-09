@@ -1,0 +1,10 @@
+publish = false
+# pre-release-hook = ["bash", "release-wasm-hook.sh"]
+
+[[pre-release-replacements]]
+file = "./wasm/Cargo.toml"
+search = "\nversion = \"[a-z0-9\\.-]+\""
+replace = "\nversion = \"{{version}}\""
+exactly = 1
+prerelease = true
+

@@ -6,9 +6,9 @@ Building local NPM package
 in `js/wasm` directory:  
 `bash build-pkg.sh`  
 
-### Run [tests](bindings/js/example/test)
+### Run [tests](example/test)
 
-Go to bindings/js/example directory and install dependencies  
+Go to js/example directory and install dependencies  
 
 ```
 yarn install

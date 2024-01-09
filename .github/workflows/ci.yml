@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+env:
+  CARGO_TERM_COLOR: always
+
+
+jobs:
+  check:
+    runs-on: ubuntu-22.04        
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --all-features --verbose --manifest-path js/wasm/Cargo.toml
+
+  clippy:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+          override: true
+      - uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --verbose --manifest-path js/wasm/Cargo.toml
+
+  test_oca-js_wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: wasm32-unknown-unknown
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli --version 0.2.89
+      - name: Setup yarn
+        run: npm install -g yarn
+      - name: Build wasm
+        working-directory: js/wasm
+        run: bash build-pkg.sh
+      - working-directory: js/example
+        run: yarn install
+      - working-directory: js/example
+        run: yarn test
+
+  publish_oca-js_wasm:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+    needs:
+      - test_oca-bundle_wasm
+      - publish_oca-bundle
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+          target: wasm32-unknown-unknown
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli --version 0.2.89
+      - name: Build wasm
+        working-directory: oca-bundle/bindings/js/wasm
+        run: bash build-pkg.sh
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "12.x"
+          registry-url: "https://registry.npmjs.org"
+      - working-directory: js/wasm/pkg
+        run: yarn install
+      - working-directory: js/wasm/pkg
+        run: yarn publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
