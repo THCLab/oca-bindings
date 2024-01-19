@@ -65,8 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     needs:
-      - test_oca-bundle_wasm
-      - publish_oca-bundle
+      - test_oca-js_wasm
     steps:
       - uses: actions/checkout@v2
       - uses: actions-rs/toolchain@v1
