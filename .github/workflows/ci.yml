@@ -77,7 +77,7 @@ jobs:
       - name: Install wasm-bindgen-cli
         run: cargo install wasm-bindgen-cli --version 0.2.89
       - name: Build wasm
-        working-directory: oca-bundle/bindings/js/wasm
+        working-directory: js/wasm
         run: bash build-pkg.sh
       - uses: actions/setup-node@v2
         with:
