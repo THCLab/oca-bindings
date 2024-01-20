@@ -667,9 +667,9 @@ dependencies = [
 
 [[package]]
 name = "oca-ast"
-version = "0.4.1-rc.2"
+version = "0.4.1-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15bae864eef893df8cd7428ae413d30e433356b8938a1f916c8eb38d8bd67431"
+checksum = "88774a19419e192a93077aa97f955417d819b4ee16f1b8e9c3e28bd10c157a4c"
 dependencies = [
  "env_logger",
  "indexmap 1.9.3",
@@ -687,9 +687,9 @@ dependencies = [
 
 [[package]]
 name = "oca-bundle"
-version = "0.4.1-rc.2"
+version = "0.4.1-rc.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f8bfde45621e900c8d9b2c3fb45917e0ce3274f68d6266bc0bf39312bcb3f5e4"
+checksum = "5e1535446dcf0129f15a91095ae00a4f60b8f355ef061c171f6d83bced3bd792"
 dependencies = [
  "cascade",
  "convert_case",
@@ -716,7 +716,7 @@ dependencies = [
 
 [[package]]
 name = "oca-js"
-version = "0.4.1-rc.2"
+version = "0.4.1-rc.6"
 dependencies = [
  "isolang",
  "oca-ast",

@@ -13,10 +13,8 @@ describe('Parsing attribute types', () => {
 	}),
 
 	it("shouldn't be parsed", () => {
-		expect( () => create_nested_attr_type_from_js("Wrong")).to.throw("Can't parse attribute type: Wrong")
-		// expect( () => create_nested_attr_type_from_js("Wrong")).to.throw("Attribute type Wrong doesn't exist")
+		expect( () => create_nested_attr_type_from_js("Wrong")).to.throw("Attribute type Wrong doesn't exist")
 		const reference = "refs:not_said";
-		expect( () => create_nested_attr_type_from_js(reference)).to.throw("Can't parse attribute type: refs:not_said")
-		// expect( () => create_nested_attr_type_from_js(reference)).to.throw("Invalid said: Unknown code")
+		expect( () => create_nested_attr_type_from_js(reference)).to.throw("Invalid said: Unknown code")
 	})
 })

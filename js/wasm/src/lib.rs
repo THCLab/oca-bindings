@@ -22,7 +22,7 @@ use oca_bundle::state::{
 };
 use oca_bundle::Encode;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -49,6 +49,8 @@ extern "C" {
     pub type EntryCodesMapping;
     #[wasm_bindgen(typescript_type = "string[]")]
     pub type Dependencies;
+    #[wasm_bindgen(typescript_type = "string | IAttribute")]
+    pub type AttributeConstructor;
 }
 
 #[wasm_bindgen]
@@ -255,17 +257,25 @@ pub struct Attribute {
 }
 
 #[wasm_bindgen]
-pub fn create_nested_attr_type_from_js(value: JsValue) -> Result<JsValue, JsValue> {
-    NestedAttrType::from_js_value(value).and_then(|attr_type| attr_type.to_js_value())
+pub fn create_nested_attr_type_from_js(
+    value: JsValue,
+) -> Result<JsValue, JsValue> {
+    NestedAttrType::from_js_value(value)
+        .and_then(|attr_type| attr_type.to_js_value())
 }
 
 #[wasm_bindgen]
 impl Attribute {
     #[wasm_bindgen(constructor)]
-    pub fn new(name: String) -> Self {
-        Self {
-            raw: AttributeRaw::new(name),
-        }
+    pub fn new(name_or_object: AttributeConstructor) -> Self {
+        let raw = if name_or_object.is_string() {
+            let name = name_or_object.as_string().unwrap();
+            AttributeRaw::new(name)
+        } else {
+            serde_wasm_bindgen::from_value(name_or_object.into()).unwrap()
+        };
+
+        Self { raw }
     }
 
     #[wasm_bindgen(js_name = "setAttributeType")]
@@ -310,6 +320,32 @@ impl Attribute {
     pub fn set_condition(mut self, condition: String) -> Self {
         self.raw.set_condition(condition);
         self
+    }
+
+    #[wasm_bindgen(js_name = "checkCondition")]
+    pub fn check_condition(&self, data: JsValue) -> Result<bool, JsValue> {
+        let data_raw_value: serde_json::Value =
+            serde_wasm_bindgen::from_value(data)
+                .map_err(|err| JsValue::from(format!("{:?}", err)))?;
+
+        let data_raw_o = data_raw_value
+            .as_object()
+            .ok_or(JsValue::from("data must be an object"))?;
+        let data_raw: BTreeMap<String, Box<dyn std::fmt::Display + 'static>> =
+            data_raw_o
+                .iter()
+                .map(|(key, value)| {
+                    (
+                        key.clone(),
+                        Box::new(value.clone())
+                            as Box<dyn std::fmt::Display + 'static>,
+                    )
+                })
+                .collect();
+
+        self.raw
+            .check_condition(data_raw)
+            .map_err(|err| JsValue::from(serde_json::to_string(&err).unwrap()))
     }
 
     #[wasm_bindgen(js_name = "setConformance")]
