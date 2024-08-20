@@ -239,8 +239,7 @@
       "d": "EG_ZvZPdTGnbzw58GyPwRJY-BXBfeL-wrqFHQkpo5XV-",
       "type": "spec/overlays/unit/1.0",
       "capture_base": "EJo30WqZ0-pfvfPD3jb00UWPDhspdRLx1LAxat501FXV",
-      "measurement_system": "metric",
-      "attribute_units": {
+      "attribute_unit": {
         "optionalPersonalData": "centimeter"
       }
     }

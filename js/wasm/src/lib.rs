@@ -1,18 +1,19 @@
 use isolang::Language;
-use oca_ast::ast::NestedAttrType;
-use oca_bundle::state::oca::overlay::cardinality::Cardinalitys;
-use oca_bundle::state::oca::overlay::character_encoding::CharacterEncodings;
-use oca_bundle::state::oca::overlay::conditional::Conditionals;
-use oca_bundle::state::oca::overlay::conformance::Conformances;
-use oca_bundle::state::oca::overlay::credential_layout::CredentialLayouts;
-use oca_bundle::state::oca::overlay::entry::Entries;
-use oca_bundle::state::oca::overlay::entry_code::EntryCodes;
-use oca_bundle::state::oca::overlay::form_layout::FormLayouts;
-use oca_bundle::state::oca::overlay::format::Formats;
-use oca_bundle::state::oca::overlay::information::Information;
-use oca_bundle::state::oca::overlay::label::Labels;
-use oca_bundle::state::oca::overlay::meta::Metas;
-use oca_bundle::state::{
+use oca_ast_semantics::ast::NestedAttrType;
+use oca_bundle_semantics::state::oca::overlay::cardinality::Cardinalitys;
+use oca_bundle_semantics::state::oca::overlay::character_encoding::CharacterEncodings;
+use oca_bundle_semantics::state::oca::overlay::conditional::Conditionals;
+use oca_bundle_semantics::state::oca::overlay::conformance::Conformances;
+use oca_bundle_semantics::state::oca::overlay::credential_layout::CredentialLayouts;
+use oca_bundle_semantics::state::oca::overlay::entry::Entries;
+use oca_bundle_semantics::state::oca::overlay::entry_code::EntryCodes;
+use oca_bundle_semantics::state::oca::overlay::form_layout::FormLayouts;
+use oca_bundle_semantics::state::oca::overlay::format::Formats;
+use oca_bundle_semantics::state::oca::overlay::information::Information;
+use oca_bundle_semantics::state::oca::overlay::label::Labels;
+use oca_bundle_semantics::state::oca::overlay::meta::Metas;
+use oca_bundle_semantics::state::oca::overlay::unit::Units;
+use oca_bundle_semantics::state::{
     attribute::Attribute as AttributeRaw,
     encoding::Encoding,
     entries::EntriesElement as EntriesElementRaw,
@@ -20,7 +21,7 @@ use oca_bundle::state::{
     oca::{OCABox as OCABoxRaw, OCABundle as OCABundleRaw},
     validator,
 };
-use oca_bundle::Encode;
+use oca_bundle_semantics::{Encode, HashFunctionCode, SerializationFormats};
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::prelude::*;
@@ -158,8 +159,10 @@ impl OCABox {
     #[wasm_bindgen(js_name = "generateBundle")]
     pub fn generate_bundle(&self) -> OCABundle {
         let mut raw = self.raw.clone();
+        let code = HashFunctionCode::Blake3_256;
+        let format = SerializationFormats::JSON;
         let oca_bundle_json_str =
-            String::from_utf8(raw.generate_bundle().encode().unwrap()).unwrap();
+            String::from_utf8(raw.generate_bundle().encode(&code, &format).unwrap()).unwrap();
         OCABundle::from(
             serde_json::from_str::<serde_json::Value>(&oca_bundle_json_str)
                 .unwrap()
@@ -416,12 +419,12 @@ impl Attribute {
         self
     }
 
-    /*
-    #[wasm_bindgen(js_name = "addUnit")]
-    pub fn add_unit(mut self, metric_system: String, unit: String) -> AttributeBuilder {
-        self.raw = self.raw.add_unit(metric_system, unit);
+    #[wasm_bindgen(js_name = "setUnit")]
+    pub fn set_unit(mut self, unit: String) -> Self {
+        self.raw.set_unit(unit);
         self
     }
+    /*
 
     #[wasm_bindgen(js_name = "addEntryCodesMapping")]
     pub fn add_entry_codes_mapping(mut self, mappings: EntryCodesMapping) -> AttributeBuilder {
@@ -781,8 +784,7 @@ type UnitOverlay = {
   capture_base: string,
   d: string,
   type: string,
-  metric_system: string,
-  attribute_units: { [attribute_name: string]: string }
+  attribute_unit: { [attribute_name: string]: string }
 }
 
 type StandardOverlay = {
