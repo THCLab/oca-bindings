@@ -75,7 +75,7 @@ describe('Missing overlay translation', () => {
 })
 
 describe('Malformed OCA Bundle', () => {
-  const said = 'EKwwHUyIW5NOuVi2zo6fyibkdJmFUoAoO-tJbKKeOuMb'
+  const said = 'EJDbEZp6bBKTe07It8XwPi6MaCMW8wtQsq5WIXrzMJfR'
   const oca = {
     v: 'OCAB10JSON000106_',
     d: said,
