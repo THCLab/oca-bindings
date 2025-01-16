@@ -17,11 +17,11 @@ describe('OCA is loaded', () => {
         'Meta',
         'Meta',
         'CharacterEncoding',
-        'EntryCode',
-        'Entry',
         'Label',
         'Information',
         'Information',
+        'EntryCode',
+        'Entry',
         'Format',
         'Unit'
       ])

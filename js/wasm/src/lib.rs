@@ -4,10 +4,8 @@ use oca_bundle_semantics::state::oca::overlay::cardinality::Cardinalitys;
 use oca_bundle_semantics::state::oca::overlay::character_encoding::CharacterEncodings;
 use oca_bundle_semantics::state::oca::overlay::conditional::Conditionals;
 use oca_bundle_semantics::state::oca::overlay::conformance::Conformances;
-use oca_bundle_semantics::state::oca::overlay::credential_layout::CredentialLayouts;
 use oca_bundle_semantics::state::oca::overlay::entry::Entries;
 use oca_bundle_semantics::state::oca::overlay::entry_code::EntryCodes;
-use oca_bundle_semantics::state::oca::overlay::form_layout::FormLayouts;
 use oca_bundle_semantics::state::oca::overlay::format::Formats;
 use oca_bundle_semantics::state::oca::overlay::information::Information;
 use oca_bundle_semantics::state::oca::overlay::label::Labels;
@@ -123,18 +121,6 @@ impl OCABox {
     #[wasm_bindgen(js_name = "addClassification")]
     pub fn add_classification(mut self, classification: String) -> Self {
         self.raw.add_classification(classification);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addFormLayout")]
-    pub fn add_form_layout(mut self, layout: String) -> Self {
-        self.raw.add_form_layout(layout);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addCredentialLayout")]
-    pub fn add_credential_layout(mut self, layout: String) -> Self {
-        self.raw.add_credential_layout(layout);
         self
     }
 
@@ -578,8 +564,6 @@ type Overlays = {
   unit?: UnitOverlay[],
   standard?: StandardOverlay,
   subset?: SubsetOverlay,
-  form_layout?: FormLayoutOverlay,
-  credential_layout?: CredentialLayoutOverlay
 }
 
 type Overlay =
@@ -598,8 +582,6 @@ type Overlay =
   | UnitOverlay
   | StandardOverlay
   | SubsetOverlay
-  | FormLayoutOverlay
-  | CredentialLayoutOverlay
 
 type CardinalityOverlay = {
   capture_base: string,
@@ -631,54 +613,6 @@ type ConformanceOverlay = {
   attribute_conformance: { [attribute_name: string]: 'O' | 'M' }
 }
 
-type CredentialLayoutOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  layout: {
-    version: string,
-    config?: {
-      css?: {
-        width?: string,
-        height?: string,
-        style?: string
-      }
-    },
-    pages: {
-      config?: {
-        css?: {
-          style?: string,
-          classes?: string[],
-          background_image?: string
-        },
-        name: string
-      },
-      elements: {
-        type: string,
-        size?: string,
-        name?: string,
-        layout?: string,
-        content?: string,
-        config?: {
-          css?: {
-            style?: string
-            classes?: string[]
-          }
-        },
-        elements?: CredentialLayoutOverlay['layout']['pages'][0]['elements']
-      }[]
-    }[],
-    labels?: {
-      [label: string]: {
-        [language: string]: string
-      }
-    },
-    reference_layouts?: {
-      [reference_layout: string]: CredentialLayoutOverlay['layout']
-    }
-  }
-}
-
 type EntryOverlay = {
   capture_base: string,
   d: string,
@@ -699,43 +633,6 @@ type EntryCodeMappingOverlay = {
   d: string,
   type: string,
   attribute_entry_codes_mapping: { [attribute_name: string]: string[] }
-}
-
-type FormLayoutOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  layout: {
-    config?: {
-      css?: {
-        style?: string
-      }
-    },
-    elements: {
-      type: string,
-      config?: {
-        css?: {
-          style?: string,
-          classes?: string[]
-        }
-      },
-      id?: string,
-      name?: string,
-      parts?: {
-        name: string,
-        layout?: string,
-        config?: {
-          css?: {
-            style?: string,
-            classes?: string[]
-          }
-        }
-      }[]
-    }[],
-    reference_layouts?: {
-      [reference_layout: string]: FormLayoutOverlay['layout']
-    }
-  }
 }
 
 type FormatOverlay = {
