@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { Attribute, OCABox, Encoding, create_nested_attr_type_from_js } from 'oca.js'
+import { Attribute, OCABox, Encoding, create_nested_attr_type_from_js, IFramings, FramingMetadata } from 'oca.js'
 
 describe('Plain OCA is built', () => {
   const oca = new OCABox()
@@ -64,6 +64,17 @@ describe('OCA with attributes is built', () => {
                 }
             })
             .setLinks({ "target_bundle_said": "name" })
+            .setFramings({
+              frame_id: "SNOMEDCT",
+              frame_label: "Systematized Nomenclature of Medicine Clinical Terms",
+              frame_location: "https://bioportal.bioontology.org/ontologies/SNOMEDCT",
+              frame_version: "2023AA"
+            }, {
+              "http://purl.bioontology.org/ontology/snomedct/703503000": {
+                  predicate_id: "skos:exactMatch",
+                  framing_justification: "semapv:ManualMappingCuration",
+              }
+            })
         )
         .addAttribute(
             new Attribute("attr2")
@@ -126,7 +137,7 @@ describe('OCA with attributes is built', () => {
           const allOverlays = oca.overlays
 
           it('properly defined', () => {
-            expect(Object.keys(oca.overlays).length).to.be.eq(8)
+            expect(Object.keys(oca.overlays).length).to.be.eq(9)
           })
 
           describe("Meta", () => {
@@ -297,6 +308,30 @@ describe('OCA with attributes is built', () => {
               })
             })
           })
+
+          describe("AttributeFraming", () => {
+            const overlays = allOverlays.attribute_framing
+
+            it('properly defined', () => {
+              expect(overlays).to.lengthOf(1)
+              const overlay = overlays[0]
+
+              expect(overlay.framing_metadata).to.deep.include({
+                frame_id: "SNOMEDCT",
+                frame_label: "Systematized Nomenclature of Medicine Clinical Terms",
+                frame_location: "https://bioportal.bioontology.org/ontologies/SNOMEDCT",
+                frame_version: "2023AA"
+              })
+              expect(overlay.attribute_framing).to.have.deep.property("attr_name", {
+                "http://purl.bioontology.org/ontology/snomedct/703503000": {
+                    predicate_id: "skos:exactMatch",
+                    framing_justification: "semapv:ManualMappingCuration",
+                }
+              })
+
+            })
+          })
+
         })
     } catch (error) {
         console.error("Error creating nested attr type from js", error);

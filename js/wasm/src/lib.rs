@@ -1,5 +1,6 @@
 use isolang::Language;
 use oca_ast_semantics::ast::NestedAttrType;
+use oca_bundle_semantics::state::oca::overlay::attribute_framing::{Framing, Framings};
 use oca_bundle_semantics::state::oca::overlay::cardinality::Cardinalitys;
 use oca_bundle_semantics::state::oca::overlay::character_encoding::CharacterEncodings;
 use oca_bundle_semantics::state::oca::overlay::conditional::Conditionals;
@@ -49,6 +50,10 @@ extern "C" {
     pub type EntryCodesMapping;
     #[wasm_bindgen(typescript_type = "{ [target_bundle_said: string]: string")]
     pub type ILinks;
+    #[wasm_bindgen(typescript_type = "FramingMetadata")]
+    pub type FramingMetadataTSType;
+    #[wasm_bindgen(typescript_type = "IFramings")]
+    pub type IFramingsTSType;
     #[wasm_bindgen(typescript_type = "string[]")]
     pub type Dependencies;
     #[wasm_bindgen(typescript_type = "string | IAttribute")]
@@ -424,6 +429,24 @@ impl Attribute {
         }
         self
     }
+
+    #[wasm_bindgen(js_name = "setFramings")]
+    pub fn set_framings(mut self, metadata: FramingMetadataTSType, framings: IFramingsTSType) -> Self {
+        let mut frame_meta: HashMap<String, String> =
+            serde_wasm_bindgen::from_value(JsValue::from(metadata)).unwrap();
+        let attr_framing: Framing =
+            serde_wasm_bindgen::from_value(JsValue::from(framings)).unwrap();
+
+        let frame_id = frame_meta.remove("frame_id").unwrap();
+        for (location, scope) in attr_framing.iter() {
+            let mut f = HashMap::new();
+            let mut s = scope.clone();
+            s.frame_meta = frame_meta.clone();
+            f.insert(location.clone(), s);
+            self.raw.set_framing(frame_id.clone(), f);
+        }
+        self
+    }
     /*
 
     #[wasm_bindgen(js_name = "addEntryCodesMapping")]
@@ -472,6 +495,20 @@ type IMeta = {
   }
 }
 
+type FramingMetadata = {
+  frame_id: string,
+  frame_label?: string
+  frame_location?: string
+  frame_version?: string
+}
+
+type IFramings = {
+  [location: string]: {
+    predicate_id: string
+    framing_justification: string
+  }
+}
+
 type IAttribute = {
   name: string
   type: string
@@ -493,6 +530,7 @@ type IAttribute = {
   conformance?: 'O' | 'M'
   standards?: string[]
   links?: { [target_bundle: string]: string }
+  framings?: { [frame_id: string]: IFramings }
 }
 "#;
 
@@ -580,6 +618,7 @@ type Overlays = {
   standard?: StandardOverlay,
   subset?: SubsetOverlay,
   link?: LinkOverlay[],
+  attribute_framing?: AttributeFramingOverlay[]
 }
 
 type Overlay =
@@ -721,6 +760,14 @@ type LinkOverlay = {
   type: string,
   target_bundle: string
   attribute_mapping: { [attribute_name: string]: string }
+}
+
+type AttributeFramingOverlay = {
+  capture_base: string,
+  d: string,
+  type: string,
+  framing_metadata: FramingMetadata
+  attribute_framing: { [attribute_name: string]: IFramings }
 }
 "#;
 
