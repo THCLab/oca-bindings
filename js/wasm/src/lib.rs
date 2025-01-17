@@ -9,6 +9,7 @@ use oca_bundle_semantics::state::oca::overlay::entry_code::EntryCodes;
 use oca_bundle_semantics::state::oca::overlay::format::Formats;
 use oca_bundle_semantics::state::oca::overlay::information::Information;
 use oca_bundle_semantics::state::oca::overlay::label::Labels;
+use oca_bundle_semantics::state::oca::overlay::link::Links;
 use oca_bundle_semantics::state::oca::overlay::meta::Metas;
 use oca_bundle_semantics::state::oca::overlay::unit::Units;
 use oca_bundle_semantics::state::{
@@ -46,6 +47,8 @@ extern "C" {
     pub type EntriesTranslations;
     #[wasm_bindgen(typescript_type = "string[]")]
     pub type EntryCodesMapping;
+    #[wasm_bindgen(typescript_type = "{ [target_bundle_said: string]: string")]
+    pub type ILinks;
     #[wasm_bindgen(typescript_type = "string[]")]
     pub type Dependencies;
     #[wasm_bindgen(typescript_type = "string | IAttribute")]
@@ -410,6 +413,17 @@ impl Attribute {
         self.raw.set_unit(unit);
         self
     }
+
+    #[wasm_bindgen(js_name = "setLinks")]
+    pub fn set_links(mut self, links: ILinks) -> Self {
+        let target_links: HashMap<String, String> =
+            serde_wasm_bindgen::from_value(JsValue::from(links)).unwrap();
+
+        for (target_said, link) in target_links.iter() {
+            self.raw.set_link(target_said.clone(), link.clone());
+        }
+        self
+    }
     /*
 
     #[wasm_bindgen(js_name = "addEntryCodesMapping")]
@@ -478,6 +492,7 @@ type IAttribute = {
   cardinality?: string
   conformance?: 'O' | 'M'
   standards?: string[]
+  links?: { [target_bundle: string]: string }
 }
 "#;
 
@@ -564,6 +579,7 @@ type Overlays = {
   unit?: UnitOverlay[],
   standard?: StandardOverlay,
   subset?: SubsetOverlay,
+  link?: LinkOverlay[],
 }
 
 type Overlay =
@@ -582,6 +598,7 @@ type Overlay =
   | UnitOverlay
   | StandardOverlay
   | SubsetOverlay
+  | LinkOverlay
 
 type CardinalityOverlay = {
   capture_base: string,
@@ -696,6 +713,14 @@ type SubsetOverlay = {
   d: string,
   type: string,
   attributes: string[]
+}
+
+type LinkOverlay = {
+  capture_base: string,
+  d: string,
+  type: string,
+  target_bundle: string
+  attribute_mapping: { [attribute_name: string]: string }
 }
 "#;
 

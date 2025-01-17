@@ -63,6 +63,7 @@ describe('OCA with attributes is built', () => {
                     pol: "opcja 2"
                 }
             })
+            .setLinks({ "target_bundle_said": "name" })
         )
         .addAttribute(
             new Attribute("attr2")
@@ -125,7 +126,7 @@ describe('OCA with attributes is built', () => {
           const allOverlays = oca.overlays
 
           it('properly defined', () => {
-            expect(Object.keys(oca.overlays).length).to.be.eq(7)
+            expect(Object.keys(oca.overlays).length).to.be.eq(8)
           })
 
           describe("Meta", () => {
@@ -269,6 +270,30 @@ describe('OCA with attributes is built', () => {
                   .that.have.property("o1", exp["attr_name"]["o1"])
                 expect(overlay.attribute_entries).to.have.property("attr_name")
                   .that.have.property("o2", exp["attr_name"]["o2"])
+              })
+            })
+          })
+
+          describe("Link", () => {
+            const overlays = allOverlays.link
+
+            it('properly defined', () => {
+              const expected: {
+                [target_bundle_said: string]: { [attribute_name: string]: string }
+              } = {
+                target_bundle_said: {
+                  "attr_name": "name"
+                }
+              }
+              expect(overlays).to.lengthOf(1)
+
+              overlays.forEach(overlay => {
+                const exp = expected[overlay.target_bundle]
+                expect(exp).to.exist
+                expect(overlay.attribute_mapping).to.have.keys(...Object.keys(exp))
+                Object.entries(exp).forEach(([attr_name, link]) => {
+                  expect(overlay.attribute_mapping).to.have.property(attr_name, link)
+                })
               })
             })
           })
