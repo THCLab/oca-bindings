@@ -668,14 +668,15 @@ dependencies = [
 
 [[package]]
 name = "oca-ast-semantics"
-version = "0.6.8"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e16ec427959c86d02b53830cb91ab63932fa516e0b0fb8dcc3f8a0da5fd40977"
+checksum = "3774fec44eb550f6d49061b5c3511fbce8acc1063b4871130424b08e3034564f"
 dependencies = [
  "env_logger",
  "indexmap 1.9.3",
  "log",
  "recursion",
+ "regex",
  "said",
  "serde",
  "serde-wasm-bindgen 0.6.3",
@@ -688,9 +689,9 @@ dependencies = [
 
 [[package]]
 name = "oca-bundle-semantics"
-version = "0.6.8"
+version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf56425494302493964dd47ce9754318c8c2dfa4bee6110f76cc0219a39d5b2f"
+checksum = "9756f0c176f4345af1f9b4a157cc46cc50867f2cf0b865dfd360daedce0b9256"
 dependencies = [
  "cascade",
  "convert_case",
@@ -717,7 +718,7 @@ dependencies = [
 
 [[package]]
 name = "oca-js"
-version = "0.6.8"
+version = "0.7.1"
 dependencies = [
  "isolang",
  "oca-ast-semantics",
@@ -855,9 +856,21 @@ checksum = "f53e857b2b1b92a9265c645b3d5aa76d8435f81d06af5ca08f9027b1225351c2"
 
 [[package]]
 name = "regex"
-version = "1.8.1"
+version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af83e617f331cc6ae2da5443c602dfa5af81e517212d9d611a5b3ba1777b5370"
+checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.4.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -866,9 +879,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.1"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5996294f19bd3aae0453a862ad728f60e6600695733dd5df01da90c54363a3c"
+checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rmp"
