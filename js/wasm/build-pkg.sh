@@ -7,7 +7,7 @@ fi
 
 TARGET_DIR="${TARGET_DIR:="./target"}"
 
-mkdir ./$OUTPUT_DIR
+mkdir -p ./$OUTPUT_DIR
 cargo build --target wasm32-unknown-unknown --release
 wasm-bindgen $TARGET_DIR/wasm32-unknown-unknown/release/oca_js.wasm --target nodejs --out-dir ./$OUTPUT_DIR/nodejs
 wasm-bindgen $TARGET_DIR/wasm32-unknown-unknown/release/oca_js.wasm --target web --out-dir ./$OUTPUT_DIR/web

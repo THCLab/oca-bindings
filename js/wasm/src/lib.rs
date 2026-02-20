@@ -1,815 +1,502 @@
-use isolang::Language;
-use oca_ast_semantics::ast::NestedAttrType;
-use oca_bundle_semantics::state::oca::overlay::attribute_framing::{Framing, Framings};
-use oca_bundle_semantics::state::oca::overlay::cardinality::Cardinalitys;
-use oca_bundle_semantics::state::oca::overlay::character_encoding::CharacterEncodings;
-use oca_bundle_semantics::state::oca::overlay::conditional::Conditionals;
-use oca_bundle_semantics::state::oca::overlay::conformance::Conformances;
-use oca_bundle_semantics::state::oca::overlay::entry::Entries;
-use oca_bundle_semantics::state::oca::overlay::entry_code::EntryCodes;
-use oca_bundle_semantics::state::oca::overlay::format::Formats;
-use oca_bundle_semantics::state::oca::overlay::information::Information;
-use oca_bundle_semantics::state::oca::overlay::label::Labels;
-use oca_bundle_semantics::state::oca::overlay::link::Links;
-use oca_bundle_semantics::state::oca::overlay::meta::Metas;
-use oca_bundle_semantics::state::oca::overlay::unit::Units;
-use oca_bundle_semantics::state::{
-    attribute::Attribute as AttributeRaw,
-    encoding::Encoding,
-    entries::EntriesElement as EntriesElementRaw,
-    entry_codes::EntryCodes as EntryCodesRaw,
-    oca::{OCABox as OCABoxRaw, OCABundle as OCABundleRaw},
-    validator,
-};
-use oca_bundle_semantics::{Encode, HashFunctionCode, SerializationFormats};
-use serde::Serialize;
-use std::collections::{BTreeMap, HashMap};
+use oca_sdk_rs::oca;
+use oca_sdk_rs::ToJSON;
+use serde_json::json;
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
-extern "C" {
-    #[wasm_bindgen(typescript_type = "OCABundle")]
-    pub type OCABundle;
-    #[wasm_bindgen(typescript_type = "IMeta")]
-    pub type MetaTSType;
-    #[wasm_bindgen(typescript_type = "IAttribute")]
-    pub type AttributeTSType;
-    #[wasm_bindgen(typescript_type = "IAttribute[]")]
-    pub type AttributesTSType;
-    #[wasm_bindgen(typescript_type = "AST")]
-    pub type AST;
-    #[wasm_bindgen(typescript_type = "'O' | 'M'")]
-    pub type ConformanceOptions;
-    #[wasm_bindgen(typescript_type = "{ [language: string]: string }")]
-    pub type Translations;
-    #[wasm_bindgen(typescript_type = "IEntry")]
-    pub type IEntry;
-    #[wasm_bindgen(typescript_type = "{ [code: string]: { [language: string]: string } }")]
-    pub type EntriesTranslations;
-    #[wasm_bindgen(typescript_type = "string[]")]
-    pub type EntryCodesMapping;
-    #[wasm_bindgen(typescript_type = "{ [target_bundle_said: string]: string")]
-    pub type ILinks;
-    #[wasm_bindgen(typescript_type = "FramingMetadata")]
-    pub type FramingMetadataTSType;
-    #[wasm_bindgen(typescript_type = "IFramings")]
-    pub type IFramingsTSType;
-    #[wasm_bindgen(typescript_type = "string[]")]
-    pub type Dependencies;
-    #[wasm_bindgen(typescript_type = "string | IAttribute")]
-    pub type AttributeConstructor;
+#[derive(serde::Serialize)]
+struct ValidationResult {
+    valid: bool,
+    errors: Vec<String>,
 }
 
-#[wasm_bindgen]
-pub struct OCABox {
-    raw: OCABoxRaw,
+#[wasm_bindgen(start)]
+pub fn init() {
+    console_error_panic_hook::set_once();
 }
 
-impl Default for OCABox {
-    fn default() -> Self {
-        Self::new()
-    }
+#[wasm_bindgen(typescript_custom_section)]
+const OCABUNDLE_TYPE: &'static str = r#"
+interface OCABundle {
+  v: string;
+  d: string;
+  capture_base: {
+    type: string;
+    d: string;
+    attributes: { [attribute_name: string]: string };
+  };
+  overlays: {
+    [key: string]: {
+      type: string;
+      [property: string]: any;
+    };
+  };
+}
+"#;
+
+#[wasm_bindgen(js_name = "parseOCAfile")]
+pub fn parse_ocafile(ocafile_str: String, overlay_file: String) -> Result<JsValue, JsValue> {
+    let registry = oca::overlay_file::OverlayLocalRegistry::from_string(overlay_file)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load overlay registry: {}", e)))?;
+
+    let oca_ast = oca::file::parse_from_string(ocafile_str, &registry)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse OCAfile: {}", e)))?;
+
+    let ast_json = json!({
+        "meta": oca_ast.meta,
+        "commands": oca_ast.commands
+    });
+
+    Ok(serde_wasm_bindgen::to_value(&ast_json).unwrap())
 }
 
-#[wasm_bindgen]
-impl OCABox {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Self {
-        Self {
-            raw: OCABoxRaw::new(),
-        }
-    }
+#[wasm_bindgen(js_name = "buildFromOCAfile")]
+pub fn build_from_ocafile(ocafile_str: String, overlay_file: String) -> Result<JsValue, JsValue> {
+    let registry = oca::overlay_file::OverlayLocalRegistry::from_string(overlay_file)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load overlay registry: {}", e)))?;
 
-    #[wasm_bindgen(js_name = "load")]
-    pub fn load(mut self, oca_bundle: OCABundle) -> Result<OCABox, JsValue> {
-        self.raw = OCABoxRaw::from(serde_wasm_bindgen::from_value::<OCABundleRaw>(
-            JsValue::from(oca_bundle),
-        )?);
-        Ok(self)
-    }
+    let oca_ast = oca::file::parse_from_string(ocafile_str, &registry)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse OCAfile: {}", e)))?;
 
-    #[wasm_bindgen(js_name = "attributes")]
-    pub fn attributes(&self) -> AttributesTSType {
-        AttributesTSType::from(
-            self.raw
-                .attributes
-                .values()
-                .collect::<Vec<_>>()
-                .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap(),
-        )
-    }
+    let build = oca::bundle::from_ast(None, &oca_ast)
+        .map_err(|e| JsValue::from_str(&format!("Failed to build bundle from OCAfile: {:?}", e)))?;
 
-    #[wasm_bindgen(js_name = "meta")]
-    pub fn meta(&self) -> MetaTSType {
-        MetaTSType::from(
-            self.raw
-                .meta
-                .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap(),
-        )
-    }
+    let bundle_json = build.oca_bundle.get_json_bundle();
 
-    #[wasm_bindgen(js_name = "classification")]
-    pub fn classification(&self) -> Option<String> {
-        self.raw.classification.clone()
-    }
-
-    #[wasm_bindgen(js_name = "toAST")]
-    pub fn to_ast(&self) -> AST {
-        let oca_bundle = self.raw.clone().generate_bundle();
-        AST::from(
-            oca_bundle
-                .to_ast()
-                .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap(),
-        )
-    }
-
-    #[wasm_bindgen(js_name = "addClassification")]
-    pub fn add_classification(mut self, classification: String) -> Self {
-        self.raw.add_classification(classification);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addMeta")]
-    pub fn add_meta(mut self, name: String, values: Translations) -> Self {
-        let lang_values: HashMap<String, String> =
-            serde_wasm_bindgen::from_value(JsValue::from(values)).unwrap();
-
-        for (lang, value) in lang_values.iter() {
-            let language_raw = Language::from_639_3(lang).unwrap();
-            self.raw.add_meta(language_raw, name.clone(), value.clone());
-        }
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addAttribute")]
-    pub fn add_attribute(mut self, attr: Attribute) -> Self {
-        self.raw.add_attribute(attr.raw);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "generateBundle")]
-    pub fn generate_bundle(&self) -> OCABundle {
-        let mut raw = self.raw.clone();
-        let code = HashFunctionCode::Blake3_256;
-        let format = SerializationFormats::JSON;
-        let oca_bundle_json_str =
-            String::from_utf8(raw.generate_bundle().encode(&code, &format).unwrap()).unwrap();
-        OCABundle::from(
-            serde_json::from_str::<serde_json::Value>(&oca_bundle_json_str)
-                .unwrap()
-                .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-                .unwrap(),
-        )
-    }
+    Ok(serde_wasm_bindgen::to_value(&bundle_json).unwrap())
 }
 
-#[wasm_bindgen]
-pub struct Validator {
-    raw: validator::Validator,
+#[wasm_bindgen(js_name = "loadBundle")]
+pub fn load_bundle(json_str: String, overlay_file: String) -> Result<JsValue, JsValue> {
+    let registry = oca::overlay_file::OverlayLocalRegistry::from_string(overlay_file)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load overlay registry: {}", e)))?;
+
+    let mut bytes = json_str.as_bytes();
+    let oca_bundle_model = oca::bundle::load(&mut bytes, &registry)
+        .map_err(|e| JsValue::from_str(&format!("Failed to load bundle: {}", e)))?;
+
+    Ok(serde_wasm_bindgen::to_value(&oca_bundle_model).unwrap())
 }
 
-impl Default for Validator {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+#[wasm_bindgen(js_name = "validateBundleSemantics")]
+pub fn validate_bundle_semantics(bundle: JsValue) -> Result<JsValue, JsValue> {
+    let result = match serde_wasm_bindgen::from_value::<serde_json::Value>(bundle) {
+        Ok(bundle) => {
+            let oca_bundle_model: oca::bundle::OCABundleModel = serde_json::from_value(bundle)
+                .map_err(|e| JsValue::from_str(&format!("Failed to parse bundle: {}", e)))?;
 
-#[wasm_bindgen]
-impl Validator {
-    #[wasm_bindgen(constructor)]
-    pub fn new() -> Validator {
-        Validator {
-            raw: validator::Validator::new(),
-        }
-    }
-
-    #[wasm_bindgen(js_name = "enforceTranslations")]
-    pub fn enforce_translations(mut self, languages: JsValue) -> Self {
-        let languages_str: Vec<String> = serde_wasm_bindgen::from_value(languages).unwrap();
-
-        let langs: Vec<Language> = languages_str
-            .iter()
-            .map(|lang| Language::from_639_3(lang).unwrap())
-            .collect();
-
-        self.raw = self.raw.enforce_translations(langs);
-        self
-    }
-
-    pub fn validate(self, oca_bundle: OCABundle) -> JsValue {
-        #[derive(Serialize)]
-        struct ReturnResult {
-            success: bool,
-            errors: Vec<String>,
-        }
-        let return_result: ReturnResult;
-        match serde_wasm_bindgen::from_value::<OCABundleRaw>(oca_bundle.into()) {
-            Ok(oca_bundle_raw) => {
-                let result = self.raw.validate(&oca_bundle_raw);
-                match result {
-                    Ok(()) => {
-                        return_result = ReturnResult {
-                            success: true,
-                            errors: vec![],
-                        }
-                    }
-                    Err(err) => {
-                        let errors: Vec<String> = err
-                            .iter()
-                            .map(|e| {
-                                if let validator::Error::Custom(msg) = e {
-                                    msg.clone()
-                                } else {
-                                    "undefined error".to_string()
-                                }
-                            })
-                            .collect();
-                        return_result = ReturnResult {
-                            success: false,
-                            errors,
-                        }
-                    }
-                }
-            }
-            Err(err) => {
-                return_result = ReturnResult {
-                    success: false,
-                    errors: vec![err.to_string()],
-                }
+            match oca::bundle::validate_semantics(&oca_bundle_model) {
+                Ok(_) => ValidationResult {
+                    valid: true,
+                    errors: vec![],
+                },
+                Err(e) => ValidationResult {
+                    valid: false,
+                    errors: vec![e.to_string()],
+                },
             }
         }
+        Err(e) => ValidationResult {
+            valid: false,
+            errors: vec![format!("Invalid bundle format: {}", e)],
+        },
+    };
 
-        return_result
-            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
-            .unwrap_or(JsValue::NULL)
-    }
+    Ok(serde_wasm_bindgen::to_value(&result).unwrap())
 }
 
-#[wasm_bindgen]
-pub struct Attribute {
-    raw: AttributeRaw,
+#[wasm_bindgen(js_name = "generateOCAfile")]
+pub fn generate_ocafile(bundle: JsValue) -> Result<String, JsValue> {
+    let oca_bundle_model: oca::bundle::OCABundleModel = serde_wasm_bindgen::from_value(bundle)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse bundle: {}", e)))?;
+
+    let oca_ast = oca_bundle_model.to_ast();
+    let ocafile = oca::file::generate_from_ast(&oca_ast);
+
+    Ok(ocafile)
 }
 
-#[wasm_bindgen]
-pub fn create_nested_attr_type_from_js(
-    value: JsValue,
+// #[wasm_bindgen(js_name = "createEmptyBundle")]
+// pub fn create_empty_bundle(classification: String) -> Result<JsValue, JsValue> {
+//
+//     let capture_base = CaptureBase::default();
+//     capture_base.classification = Some(classification.clone());
+//
+//     let oca_bundle = json!({
+//         "v": "OCAS02JSON0009e3_",
+//         "d": "",
+//         "capture_base": {
+//             "type": "capture_base/2.0.0",
+//             "d": "",
+//             "classification": classification,
+//             "attributes": {},
+//             "flagged_attributes": []
+//         },
+//         "overlays": {}
+//     });
+//
+//     Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
+// }
+
+#[wasm_bindgen(js_name = "bundleToJSON")]
+pub fn bundle_to_json(oca_bundle: JsValue) -> Result<String, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to convert bundle: {}",
+                e
+            )));
+        }
+    };
+
+    let json_str = serde_json::to_string_pretty(&oca_bundle)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize bundle: {}", e)))?;
+
+    Ok(json_str)
+}
+
+#[wasm_bindgen(js_name = "getBundleDigest")]
+pub fn get_bundle_digest(oca_bundle: JsValue) -> Result<String, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get bundle digest: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(oca_bundle
+        .get("d")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string())
+}
+
+#[wasm_bindgen(js_name = "getBundleVersion")]
+pub fn get_bundle_version(oca_bundle: JsValue) -> Result<String, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get bundle version: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(oca_bundle
+        .get("v")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string())
+}
+
+#[wasm_bindgen(js_name = "getBundleType")]
+pub fn get_bundle_type(oca_bundle: JsValue) -> Result<String, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get bundle type: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(oca_bundle
+        .get("capture_base")
+        .and_then(|v| v.get("type"))
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string())
+}
+
+#[wasm_bindgen(js_name = "getBundleClassification")]
+pub fn get_bundle_classification(oca_bundle: JsValue) -> Result<String, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get bundle classification: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(oca_bundle
+        .get("capture_base")
+        .and_then(|v| v.get("classification"))
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string())
+}
+
+#[wasm_bindgen(js_name = "getBundleAttributes")]
+pub fn get_bundle_attributes(oca_bundle: JsValue) -> Result<JsValue, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get bundle attributes: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(serde_wasm_bindgen::to_value(
+        &oca_bundle
+            .get("capture_base")
+            .and_then(|v| v.get("attributes"))
+            .unwrap_or(&json!({})),
+    )
+    .unwrap())
+}
+
+#[wasm_bindgen(js_name = "getBundleFlaggedAttributes")]
+pub fn get_bundle_flagged_attributes(oca_bundle: JsValue) -> Result<JsValue, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get bundle flagged attributes: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(serde_wasm_bindgen::to_value(
+        &oca_bundle
+            .get("capture_base")
+            .and_then(|v| v.get("flagged_attributes"))
+            .unwrap_or(&json!([])),
+    )
+    .unwrap())
+}
+
+#[wasm_bindgen(js_name = "hasOverlays")]
+pub fn has_overlays(oca_bundle: JsValue) -> Result<bool, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to check overlays: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(oca_bundle
+        .get("overlays")
+        .and_then(|v| v.as_object())
+        .map(|obj| !obj.is_empty())
+        .unwrap_or(false))
+}
+
+#[wasm_bindgen(js_name = "getOverlayCount")]
+pub fn get_overlay_count(oca_bundle: JsValue) -> Result<u32, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get overlay count: {}",
+                e
+            )));
+        }
+    };
+
+    Ok(oca_bundle
+        .get("overlays")
+        .and_then(|v| v.as_object())
+        .map(|obj| obj.len() as u32)
+        .unwrap_or(0))
+}
+
+#[wasm_bindgen(js_name = "getOverlayNames")]
+pub fn get_overlay_names(oca_bundle: JsValue) -> Result<JsValue, JsValue> {
+    let oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to get overlay names: {}",
+                e
+            )));
+        }
+    };
+
+    let overlay_names: Vec<String> = oca_bundle
+        .get("overlays")
+        .and_then(|v| v.as_object())
+        .map(|obj| obj.keys().cloned().collect())
+        .unwrap_or_default();
+
+    Ok(serde_wasm_bindgen::to_value(&overlay_names).unwrap())
+}
+
+#[wasm_bindgen(js_name = "createBundleWithAttributes")]
+pub fn create_bundle_with_attributes(
+    classification: String,
+    attributes: JsValue,
 ) -> Result<JsValue, JsValue> {
-    NestedAttrType::from_js_value(value)
-        .and_then(|attr_type| attr_type.to_js_value())
-}
-
-#[wasm_bindgen]
-impl Attribute {
-    #[wasm_bindgen(constructor)]
-    pub fn new(name_or_object: AttributeConstructor) -> Self {
-        let raw = if name_or_object.is_string() {
-            let name = name_or_object.as_string().unwrap();
-            AttributeRaw::new(name)
-        } else {
-            serde_wasm_bindgen::from_value(name_or_object.into()).unwrap()
+    let attrs: std::collections::HashMap<String, String> =
+        match serde_wasm_bindgen::from_value(attributes) {
+            Ok(a) => a,
+            Err(e) => {
+                return Err(JsValue::from_str(&format!(
+                    "Failed to parse attributes: {}",
+                    e
+                )));
+            }
         };
 
-        Self { raw }
+    let oca_bundle = json!({
+        "v": "OCAS02JSON0009e3_",
+        "d": "",
+        "capture_base": {
+            "type": "capture_base/2.0.0",
+            "d": "",
+            "classification": classification,
+            "attributes": serde_json::to_value(&attrs).unwrap_or(json!({})),
+            "flagged_attributes": []
+        },
+        "overlays": {}
+    });
+
+    Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
+}
+
+// #[wasm_bindgen(js_name = "createBundleWithOverlay")]
+// pub fn create_bundle_with_overlay(
+//     overlay_type: String,
+//     overlay_properties: JsValue,
+// ) -> Result<JsValue, JsValue> {
+//     let props: std::collections::HashMap<String, serde_json::Value> =
+//         match serde_wasm_bindgen::from_value(overlay_properties) {
+//             Ok(p) => p,
+//             Err(e) => {
+//                 return Err(JsValue::from_str(&format!(
+//                     "Failed to parse overlay properties: {}",
+//                     e
+//                 )));
+//             }
+//         };
+//
+//     let oca_bundle = json!({
+//         "v": "OCAS02JSON0009e3_",
+//         "d": "",
+//         "capture_base": {
+//             "type": "capture_base/2.0.0",
+//             "d": "",
+//             "classification": "",
+//             "attributes": {},
+//             "flagged_attributes": []
+//         },
+//         "overlays": {
+//             [overlay_type.clone()]: {
+//                 "type": overlay_type.clone(),
+//                 "properties": serde_json::to_value(&props).unwrap_or(json!({}))
+//             }
+//         }
+//     });
+//
+//     Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
+// }
+
+#[wasm_bindgen(js_name = "addAttributeToBundle")]
+pub fn add_attribute_to_bundle(
+    oca_bundle: JsValue,
+    attribute_name: String,
+    attribute_type: String,
+) -> Result<JsValue, JsValue> {
+    let mut oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to add attribute: {}",
+                e
+            )));
+        }
+    };
+
+    oca_bundle["capture_base"]["attributes"][&attribute_name] = serde_json::json!(attribute_type);
+
+    Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
+}
+
+#[wasm_bindgen(js_name = "removeAttributeFromBundle")]
+pub fn remove_attribute_from_bundle(
+    oca_bundle: JsValue,
+    attribute_name: String,
+) -> Result<JsValue, JsValue> {
+    let mut oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to remove attribute: {}",
+                e
+            )));
+        }
+    };
+
+    if let Some(attributes) = oca_bundle["capture_base"]["attributes"].as_object_mut() {
+        attributes.remove(&attribute_name);
     }
 
-    #[wasm_bindgen(js_name = "setAttributeType")]
-    pub fn set_attribute_type(mut self, attr_type: JsValue) -> Self {
-        let attr_type = NestedAttrType::from_js_value(attr_type);
-        match attr_type {
-            Ok(attr_type) => {
-                self.raw.set_attribute_type(attr_type);
+    Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
+}
+
+#[wasm_bindgen(js_name = "addOverlayToBundle")]
+pub fn add_overlay_to_bundle(
+    oca_bundle: JsValue,
+    overlay_name: String,
+    overlay_type: String,
+    overlay_properties: JsValue,
+) -> Result<JsValue, JsValue> {
+    let mut oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!("Failed to add overlay: {}", e)));
+        }
+    };
+
+    let props: std::collections::HashMap<String, serde_json::Value> =
+        match serde_wasm_bindgen::from_value(overlay_properties) {
+            Ok(p) => p,
+            Err(e) => {
+                return Err(JsValue::from_str(&format!(
+                    "Failed to parse overlay properties: {}",
+                    e
+                )));
             }
-            Err(err) => {
-                panic!("Error setting attribute type: {:?}", err);
-            }
+        };
+
+    oca_bundle["overlays"][&overlay_name] = json!({
+        "type": overlay_type,
+        "properties": serde_json::to_value(&props).unwrap_or(json!({}))
+    });
+
+    Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
+}
+
+#[wasm_bindgen(js_name = "removeOverlayFromBundle")]
+pub fn remove_overlay_from_bundle(
+    oca_bundle: JsValue,
+    overlay_name: String,
+) -> Result<JsValue, JsValue> {
+    let mut oca_bundle: serde_json::Value = match serde_wasm_bindgen::from_value(oca_bundle) {
+        Ok(bundle) => bundle,
+        Err(e) => {
+            return Err(JsValue::from_str(&format!(
+                "Failed to remove overlay: {}",
+                e
+            )));
         }
-        self
-    }
+    };
 
-    #[wasm_bindgen(js_name = "setFlagged")]
-    pub fn set_flagged(mut self) -> Self {
-        self.raw.set_flagged();
-        self
-    }
+    oca_bundle["overlays"]
+        .as_object_mut()
+        .map(|overlays| overlays.remove(&overlay_name));
 
-    #[wasm_bindgen(js_name = "merge")]
-    pub fn merge(mut self, attr: Attribute) -> Self {
-        self.raw.merge(&attr.raw);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setEncoding")]
-    pub fn set_encoding(mut self, encoding: Encoding) -> Self {
-        self.raw.set_encoding(encoding);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setCardinality")]
-    pub fn set_cardinality(mut self, cardinality: String) -> Self {
-        self.raw.set_cardinality(cardinality);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setCondition")]
-    pub fn set_condition(mut self, condition: String) -> Self {
-        self.raw.set_condition(condition);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "checkCondition")]
-    pub fn check_condition(&self, data: JsValue) -> Result<bool, JsValue> {
-        let data_raw_value: serde_json::Value =
-            serde_wasm_bindgen::from_value(data)
-                .map_err(|err| JsValue::from(format!("{:?}", err)))?;
-
-        let data_raw_o = data_raw_value
-            .as_object()
-            .ok_or(JsValue::from("data must be an object"))?;
-        let data_raw: BTreeMap<String, Box<dyn std::fmt::Display + 'static>> =
-            data_raw_o
-                .iter()
-                .map(|(key, value)| {
-                    (
-                        key.clone(),
-                        Box::new(value.clone())
-                            as Box<dyn std::fmt::Display + 'static>,
-                    )
-                })
-                .collect();
-
-        self.raw
-            .check_condition(data_raw)
-            .map_err(|err| JsValue::from(serde_json::to_string(&err).unwrap()))
-    }
-
-    #[wasm_bindgen(js_name = "setConformance")]
-    pub fn set_conformance(mut self, conformance: ConformanceOptions) -> Self {
-        let conformance_raw: String = serde_wasm_bindgen::from_value(conformance.into()).unwrap();
-        self.raw.set_conformance(conformance_raw);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setFormat")]
-    pub fn set_format(mut self, format: String) -> Self {
-        self.raw.set_format(format);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setLabel")]
-    pub fn set_label(mut self, labels: Translations) -> Self {
-        let lang_labels: HashMap<String, String> =
-            serde_wasm_bindgen::from_value(JsValue::from(labels)).unwrap();
-
-        for (lang, label) in lang_labels.iter() {
-            let language_raw = Language::from_639_3(lang).unwrap();
-            self.raw.set_label(language_raw, label.clone());
-        }
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setInformation")]
-    pub fn set_information(mut self, information: Translations) -> Self {
-        let lang_information: HashMap<String, String> =
-            serde_wasm_bindgen::from_value(JsValue::from(information)).unwrap();
-
-        for (lang, information) in lang_information.iter() {
-            let language_raw = Language::from_639_3(lang).unwrap();
-            self.raw.set_information(language_raw, information.clone());
-        }
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setEntries")]
-    pub fn set_entries(mut self, entries: EntriesTranslations) -> Self {
-        let entry_translations: HashMap<String, HashMap<String, String>> =
-            serde_wasm_bindgen::from_value(JsValue::from(entries)).unwrap();
-
-        let mut codes: Vec<String> = vec![];
-        let mut lang_entries: HashMap<Language, HashMap<String, String>> = HashMap::new();
-
-        for (entry_code, translations) in entry_translations.iter() {
-            codes.push(entry_code.clone());
-            for (lang, entry) in translations.iter() {
-                let language_raw = Language::from_639_3(lang).unwrap();
-                if let Some(entry_tr) = lang_entries.get_mut(&language_raw) {
-                    entry_tr.insert(entry_code.clone(), entry.clone());
-                } else {
-                    let mut entry_tr: HashMap<String, String> = HashMap::new();
-                    entry_tr.insert(entry_code.clone(), entry.clone());
-                    lang_entries.insert(language_raw, entry_tr);
-                }
-            }
-        }
-
-        self.raw.set_entry_codes(EntryCodesRaw::Array(codes));
-        for (lang, translations) in lang_entries.iter() {
-            self.raw
-                .set_entry(*lang, EntriesElementRaw::Object(translations.clone()));
-        }
-
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setUnit")]
-    pub fn set_unit(mut self, unit: String) -> Self {
-        self.raw.set_unit(unit);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setLinks")]
-    pub fn set_links(mut self, links: ILinks) -> Self {
-        let target_links: HashMap<String, String> =
-            serde_wasm_bindgen::from_value(JsValue::from(links)).unwrap();
-
-        for (target_said, link) in target_links.iter() {
-            self.raw.set_link(target_said.clone(), link.clone());
-        }
-        self
-    }
-
-    #[wasm_bindgen(js_name = "setFramings")]
-    pub fn set_framings(mut self, metadata: FramingMetadataTSType, framings: IFramingsTSType) -> Self {
-        let mut frame_meta: HashMap<String, String> =
-            serde_wasm_bindgen::from_value(JsValue::from(metadata)).unwrap();
-        let attr_framing: Framing =
-            serde_wasm_bindgen::from_value(JsValue::from(framings)).unwrap();
-
-        let frame_id = frame_meta.remove("frame_id").unwrap();
-        for (location, scope) in attr_framing.iter() {
-            let mut f = HashMap::new();
-            let mut s = scope.clone();
-            s.frame_meta = frame_meta.clone();
-            f.insert(location.clone(), s);
-            self.raw.set_framing(frame_id.clone(), f);
-        }
-        self
-    }
-    /*
-
-    #[wasm_bindgen(js_name = "addEntryCodesMapping")]
-    pub fn add_entry_codes_mapping(mut self, mappings: EntryCodesMapping) -> AttributeBuilder {
-        let mappings_value = JsValue::from(mappings);
-
-        self.raw = self
-            .raw
-            .add_entry_codes_mapping(serde_wasm_bindgen::from_value(mappings_value).unwrap());
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addCondition")]
-    pub fn add_condition(
-        mut self,
-        condition: String,
-        dependencies: Dependencies,
-    ) -> AttributeBuilder {
-        let dependencies_value = JsValue::from(dependencies);
-        self.raw = self.raw.add_condition(
-            condition,
-            serde_wasm_bindgen::from_value(dependencies_value).unwrap(),
-        );
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addStandard")]
-    pub fn add_standard(mut self, standard: String) -> AttributeBuilder {
-        self.raw = self.raw.add_standard(standard);
-        self
-    }
-
-    #[wasm_bindgen(js_name = "addMapping")]
-    pub fn add_mapping(mut self, mapping: String) -> AttributeBuilder {
-        self.raw = self.raw.add_mapping(mapping);
-        self
-    }
-    */
+    Ok(serde_wasm_bindgen::to_value(&oca_bundle).unwrap())
 }
-
-#[wasm_bindgen(typescript_custom_section)]
-const ATTRIBUTE_TYPE: &'static str = r#"
-type IMeta = {
-  [language: string]: {
-    [attribute_name: string]: string
-  }
-}
-
-type FramingMetadata = {
-  frame_id: string,
-  frame_label?: string
-  frame_location?: string
-  frame_version?: string
-}
-
-type IFramings = {
-  [location: string]: {
-    predicate_id: string
-    framing_justification: string
-  }
-}
-
-type IAttribute = {
-  name: string
-  type: string
-  is_flagged: boolean
-  labels?: { [language: string]: string }
-  category_labels?: { [language: string]: string }
-  informations?: { [language: string]: string }
-  entry_codes?: string[] | string
-  entries?: { [language: string]: string | { [entry_code: string]: string } }
-  mapping?: string
-  encoding?: string
-  format?: string
-  units?: { [measurement_system: string]: string }
-  entry_codes_mapping?: string[]
-  reference_sai?: string
-  condition?: string
-  dependencies?: string[]
-  cardinality?: string
-  conformance?: 'O' | 'M'
-  standards?: string[]
-  links?: { [target_bundle: string]: string }
-  framings?: { [frame_id: string]: IFramings }
-}
-"#;
-
-#[wasm_bindgen(typescript_custom_section)]
-const AST_TYPE: &'static str = r#"
-type Command = {
-  type: 'Add',
-  object_kind: string,
-  content: {
-    attributes?: { [attribute_name: string]: string },
-    properties?: { [property_name: string]: string }
-  }
-}
-
-type EntryCodeCommand = {
-  type: 'Add',
-  object_kind: 'EntryCode',
-  content: {
-    attributes?: {
-      [attribute_name: string]: string | string[]
-    },
-    properties?: { [property_name: string]: string }
-  }
-}
-
-type EntryCommand = {
-  type: 'Add',
-  object_kind: 'Entry',
-  content: {
-    attributes?: {
-      [attribute_name: string]: string | {
-        [entry_code: string]: string
-      }
-    },
-    properties?: { [property_name: string]: string }
-  }
-}
-
-type AST = {
-  version: string,
-  commands: (Command | EntryCodeCommand | EntryCommand)[],
-  commands_meta?: object
-}
-"#;
-
-#[wasm_bindgen(typescript_custom_section)]
-const OCA_TYPE: &'static str = r#"
-type BundleWithDeps = {
-  bundle: OCABundle,
-  dependencies: string[]
-}
-
-type OCABundle = {
-  v: string,
-  d: string,
-  capture_base: CaptureBase,
-  overlays: Overlays,
-  references?: {
-    [capture_base_sai: string]: OCABundle
-  }
-}
-
-type CaptureBase = {
-  type: string,
-  d: string,
-  classification: string,
-  attributes: { [attribute_name: string]: string },
-  flagged_attributes: string[]
-}
-
-type Overlays = {
-  cardinality?: CardinalityOverlay,
-  character_encoding?: CharacterEncodingOverlay,
-  conditional?: ConditionalOverlay,
-  conformance?: ConformanceOverlay,
-  entry?: EntryOverlay[],
-  entry_code?: EntryCodeOverlay,
-  entry_code_mapping?: EntryCodeMappingOverlay,
-  format?: FormatOverlay,
-  information?: InformationOverlay[],
-  label?: LabelOverlay[],
-  mapping?: MappingOverlay,
-  meta?: MetaOverlay[],
-  unit?: UnitOverlay[],
-  standard?: StandardOverlay,
-  subset?: SubsetOverlay,
-  link?: LinkOverlay[],
-  attribute_framing?: AttributeFramingOverlay[]
-}
-
-type Overlay =
-  | CardinalityOverlay
-  | CharacterEncodingOverlay
-  | ConditionalOverlay
-  | ConformanceOverlay
-  | EntryOverlay
-  | EntryCodeOverlay
-  | EntryCodeMappingOverlay
-  | FormatOverlay
-  | InformationOverlay
-  | LabelOverlay
-  | MappingOverlay
-  | MetaOverlay
-  | UnitOverlay
-  | StandardOverlay
-  | SubsetOverlay
-  | LinkOverlay
-
-type CardinalityOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_cardinality: { [attribute_name: string]: string }
-}
-
-type CharacterEncodingOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  default_character_encoding: string,
-  attribute_character_encoding: { [attribute_name: string]: string }
-}
-
-type ConditionalOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_conditions: { [attribute_name: string]: string },
-  attribute_dependencies: { [attribute_name: string]: string[] }
-}
-
-type ConformanceOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_conformance: { [attribute_name: string]: 'O' | 'M' }
-}
-
-type EntryOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  language: string,
-  attribute_entries: { [attribute_name: string]: { [entry_code: string]: string } }
-}
-
-type EntryCodeOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_entry_codes: { [attribute_name: string]: string[] }
-}
-
-type EntryCodeMappingOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_entry_codes_mapping: { [attribute_name: string]: string[] }
-}
-
-type FormatOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_formats: { [attribute_name: string]: string }
-}
-
-type InformationOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  language: string,
-  attribute_information: { [attribute_name: string]: string }
-}
-
-type LabelOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  language: string,
-  attribute_labels: { [attribute_name: string]: string }
-  attribute_categories: string[],
-  category_labels: { [cat_id: string]: string },
-  category_attributes: { [cat_id: string]: string[] }
-}
-
-type MappingOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_mapping: { [attribute_name: string]: string }
-}
-
-type MetaOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  language: string,
-  name: string,
-  description: string
-}
-
-type UnitOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_unit: { [attribute_name: string]: string }
-}
-
-type StandardOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attribute_standards: { [attribute_name: string]: string }
-}
-
-type SubsetOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  attributes: string[]
-}
-
-type LinkOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  target_bundle: string
-  attribute_mapping: { [attribute_name: string]: string }
-}
-
-type AttributeFramingOverlay = {
-  capture_base: string,
-  d: string,
-  type: string,
-  framing_metadata: FramingMetadata
-  attribute_framing: { [attribute_name: string]: IFramings }
-}
-"#;
-
-/*
-#[wasm_bindgen(typescript_custom_section)]
-const ATTRIBUTE_TYPE: &'static str = r#"
-type AttributeTranslation = {
-  label?: string,
-  entries?: { [entry_code: string]: string }
-  information?: string
-}
-
-type Attribute = {
-  name: string
-  attribute_type: string
-  sai?: string
-  is_flagged: boolean
-  translations: { [language: string]: AttributeTranslation }
-  encoding?: string
-  format?: string
-  standard?: string
-  metric_system?: string
-  unit?: string
-  entry_codes?: string[]
-  entry_codes_mapping?: string[]
-  condition?: string
-  dependencies?: string[]
-  mapping?: string
-  cardinality?: string
-  conformance?: 'O' | 'M'
-}
-"#;
-
-#[wasm_bindgen(typescript_custom_section)]
-const TYPES: &'static str = r#"
-interface ITranslations {
-  [language: string]: string
-}
-
-interface IEntry {
-  code: string,
-  translations: ITranslations
-}
-"#;
-*/
