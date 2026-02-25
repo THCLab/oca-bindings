@@ -105,10 +105,13 @@ pub fn validate_bundle_semantics(bundle: JsValue) -> Result<JsValue, JsValue> {
 }
 
 #[wasm_bindgen(js_name = "generateOCAfile")]
-pub fn generate_ocafile(bundle: JsValue) -> Result<String, JsValue> {
-    let oca_bundle_model: oca::bundle::OCABundleModel = serde_wasm_bindgen::from_value(bundle)
-        .map_err(|e| JsValue::from_str(&format!("Failed to parse bundle: {}", e)))?;
+pub fn generate_ocafile(bundle: String, overlay_file: String) -> Result<String, JsValue> {
+    let registry = oca::overlay_file::OverlayLocalRegistry::from_string(overlay_file)
+            .map_err(|e| JsValue::from_str(&format!("Failed to load overlay registry: {}", e)))?;
 
+    let mut bytes = bundle.as_bytes();
+    let oca_bundle_model = oca::bundle::load(&mut bytes, &registry)
+        .map_err(|e| JsValue::from_str(&format!("Failed to load bundle: {}", e)))?;
     let oca_ast = oca_bundle_model.to_ast();
     let ocafile = oca::file::generate_from_ast(&oca_ast);
 
