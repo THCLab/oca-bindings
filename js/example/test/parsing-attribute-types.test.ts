@@ -1,20 +1,27 @@
 import { expect } from 'chai'
-import { create_nested_attr_type_from_js } from 'oca.js'
+import { buildFromOCAfile, bundleToJSON } from 'oca.js'
+import fs from 'fs'
+
+const overlay_file = fs.readFileSync('./test/assets/semantic.overlayfile', 'utf8')
 
 describe('Parsing attribute types', () => {
-	it('should be parsed', () => {
-		const numericTypeJs = create_nested_attr_type_from_js("Numeric");
-        const dateTimeTypeJs = create_nested_attr_type_from_js("DateTime");
-        const reference = "refs:EF5ERATRBBN_ewEo9buQbznirhBmvrSSC0O2GIR4Gbfs";
-        const nestedAttrTypeJs = create_nested_attr_type_from_js(reference);
-        const arrayTypeWithNumericJs = create_nested_attr_type_from_js(["Numeric"]);
-        const arrayTypeWithRefJs = create_nested_attr_type_from_js(["refs:EF5ERATRBBN_ewEo9buQbznirhBmvrSSC0O2GIR4Gbfs"]);
-        const arrayOfArrayTypeWithRefJs = create_nested_attr_type_from_js([["refs:EF5ERATRBBN_ewEo9buQbznirhBmvrSSC0O2GIR4Gbfs"]]);
-	}),
+  it('should create bundles with different attribute types', () => {
+    const ocafile = `--name=test-classification
+ADD Attribute attribute1=Numeric
+ADD Attribute attribute2=Text
+ADD Attribute attribute3=Boolean
+ADD Attribute attribute4=Binary
+ADD Attribute attribute5=DateTime
+`
 
-	it("shouldn't be parsed", () => {
-		expect( () => create_nested_attr_type_from_js("Wrong")).to.throw("Attribute type Wrong doesn't exist")
-		const reference = "refs:not_said";
-		expect( () => create_nested_attr_type_from_js(reference)).to.throw("Invalid said: Unknown code")
-	})
+    const bundle = buildFromOCAfile(ocafile, overlay_file)
+    const json = JSON.parse(JSON.parse(bundleToJSON(bundle)))
+
+    expect(json.capture_base.attributes).to.be.an('object')
+    expect(json.capture_base.attributes).to.have.property('attribute1', 'Numeric')
+    expect(json.capture_base.attributes).to.have.property('attribute2', 'Text')
+    expect(json.capture_base.attributes).to.have.property('attribute3', 'Boolean')
+    expect(json.capture_base.attributes).to.have.property('attribute4', 'Binary')
+    expect(json.capture_base.attributes).to.have.property('attribute5', 'DateTime')
+  })
 })

@@ -1,69 +1,146 @@
 import { expect } from 'chai'
-import { OCABox } from 'oca.js'
-const oca_bundle_json = require('./assets/oca.json')
+import { loadBundle, getBundleAttributes, getBundleClassification, bundleToJSON } from 'oca.js'
+import fs from 'fs'
+const oca_bundle_json = require('./assets/oca_new.json')
+const overlay_file = fs.readFileSync('./test/assets/semantic.overlayfile', 'utf8')
 
 describe('OCA is loaded', () => {
-  const oca_box = new OCABox().load(oca_bundle_json)
-    .addClassification('test_classification')
-
-  describe('to AST', () => {
-    it('has a valid AST', () => {
-      const ast = oca_box.toAST()
-      expect(ast.version).to.be.equal('1.0.0')
-      expect(ast.commands.map(c => c.object_kind)).to.be.eql( [
-        'CaptureBase',
-        'Meta',
-        'Meta',
-        'Meta',
-        'Meta',
-        'CharacterEncoding',
-        'Format',
-        'Label',
-        'Information',
-        'Information',
-        'EntryCode',
-        'Entry',
-        'Unit'
-      ])
-    })
-  })
+  // Load bundle from JSON
+  const bundle = loadBundle(JSON.stringify(oca_bundle_json), overlay_file)
 
   it('has list of attributes', () => {
-    const attributes = oca_box.attributes()
+    const attributes = getBundleAttributes(bundle)
 
-    expect(attributes).to.be.an('array')
-    expect(attributes).to.have.lengthOf(21)
+    expect(attributes).to.exist
+    const attributeKeys = attributes instanceof Map ? Array.from(attributes.keys()) : Object.keys(attributes)
+    expect(attributeKeys).to.have.lengthOf(21)
   })
 
   it('has meta', () => {
-    const meta = oca_box.meta()
+    const json = JSON.parse(bundleToJSON(bundle))
+    const metaOverlays = json.overlays.filter((o: any) => o.type === 'overlay/meta/2.0.0')
 
-    expect(meta).to.be.an('object')
-    expect(meta).to.deep.equal(
-      {
-        fra: {
-          name: "VIZ pour passeport numérique",
-          description: "Un formulaire à utiliser pour capturer les données de la zone d'inspection visuelle pour un passeport numérique"
-        },
-        eng: {
-          description: "A form to be used for capturing Visual Inspection Zone data for a Digital Passport",
-          name: "VIZ for Digital Passport"
-        },
-        epo: {
-          name: "Cifereca pasporto",
-          description: "Formo por kolekti ciferecajn pasportajn datumojn"
-        },
-        pol: {
-          description: "Formularz służący do zebrania danych dotyczących paszportu cyfrowego",
-          name: "Passport cyfrowy"
-        }
+    expect(metaOverlays).to.be.an('array')
+    expect(metaOverlays).to.have.lengthOf(4)
+
+    // Check that meta overlays have expected structure
+    const metaMap: { [key: string]: { name: string, description: string } } = {}
+    metaOverlays.forEach((meta: any) => {
+      metaMap[meta.properties?.language] = {
+        name: meta.properties?.name,
+        description: meta.properties?.description
       }
-    )
+    })
+
+    expect(metaMap).to.haveOwnProperty('fr')
+    expect(metaMap.fr.name).to.equal('VIZ pour passeport numérique')
+    expect(metaMap).to.haveOwnProperty('en')
+    expect(metaMap.en.name).to.equal('VIZ for Digital Passport')
+    expect(metaMap).to.haveOwnProperty('epo')
+    expect(metaMap.epo.name).to.equal('Cifereca pasporto')
+    expect(metaMap).to.haveOwnProperty('pl')
+    expect(metaMap.pl.name).to.equal('Passport cyfrowy')
   })
 
   it('has classification', () => {
-    const classification = oca_box.classification()
+    const classification = getBundleClassification(bundle)
 
-    expect(classification).to.be.equal('test_classification')
+    expect(classification).to.equal('')
+  })
+
+  it('has label overlay', () => {
+    const json = JSON.parse(bundleToJSON(bundle))
+    const labelOverlays = json.overlays.filter((o: any) => o.type === 'overlay/label/2.0.0')
+
+    expect(labelOverlays).to.be.an('array')
+    expect(labelOverlays).to.have.lengthOf(1)
+
+    const labelOverlay = labelOverlays[0]
+    expect(labelOverlay).to.haveOwnProperty('properties')
+    expect(labelOverlay.properties).to.haveOwnProperty('language')
+    expect(labelOverlay.properties.language).to.equal('fr')
+    expect(labelOverlay.properties).to.haveOwnProperty('attribute_labels')
+    expect(Object.keys(labelOverlay.properties.attribute_labels)).to.have.lengthOf(21)
+  })
+
+  it('has entry_code overlay', () => {
+    const json = JSON.parse(bundleToJSON(bundle))
+    const entryCodeOverlays = json.overlays.filter((o: any) => o.type === 'overlay/entry_code/2.0.0')
+
+    expect(entryCodeOverlays).to.be.an('array')
+    expect(entryCodeOverlays).to.have.lengthOf(1)
+
+    const entryCodeOverlay = entryCodeOverlays[0]
+    expect(entryCodeOverlay).to.haveOwnProperty('properties')
+    expect(entryCodeOverlay.properties).to.haveOwnProperty('attribute_entry_codes')
+    expect(entryCodeOverlay.properties.attribute_entry_codes).to.haveOwnProperty('documentType')
+    expect(entryCodeOverlay.properties.attribute_entry_codes.documentType).to.deep.equal(['PASSPORT'])
+    expect(entryCodeOverlay.properties.attribute_entry_codes).to.haveOwnProperty('sex')
+    expect(entryCodeOverlay.properties.attribute_entry_codes.sex).to.deep.equal(['F', 'M', 'X'])
+  })
+
+  it('has entry overlay', () => {
+    const json = JSON.parse(bundleToJSON(bundle))
+    const entryOverlays = json.overlays.filter((o: any) => o.type === 'overlay/entry/2.0.0')
+
+    expect(entryOverlays).to.be.an('array')
+    expect(entryOverlays).to.have.lengthOf(1)
+
+    const entryOverlay = entryOverlays[0]
+    expect(entryOverlay).to.haveOwnProperty('properties')
+    expect(entryOverlay.properties).to.haveOwnProperty('language')
+    expect(entryOverlay.properties.language).to.equal('fr')
+    expect(entryOverlay.properties).to.haveOwnProperty('attribute_entries')
+    expect(entryOverlay.properties.attribute_entries).to.haveOwnProperty('documentType')
+    expect(entryOverlay.properties.attribute_entries.documentType).to.haveOwnProperty('PASSPORT')
+    expect(entryOverlay.properties.attribute_entries.documentType.PASSPORT).to.equal('Passport')
+  })
+
+  it('has format overlay', () => {
+    const json = JSON.parse(bundleToJSON(bundle))
+    const formatOverlays = json.overlays.filter((o: any) => o.type === 'overlay/format/2.0.0')
+
+    expect(formatOverlays).to.be.an('array')
+    expect(formatOverlays).to.have.lengthOf(1)
+
+    const formatOverlay = formatOverlays[0]
+    expect(formatOverlay).to.haveOwnProperty('properties')
+    expect(formatOverlay.properties).to.haveOwnProperty('attribute_formats')
+    expect(formatOverlay.properties.attribute_formats).to.haveOwnProperty('dateOfBirth')
+    expect(formatOverlay.properties.attribute_formats.dateOfBirth).to.equal('YYnMMnDD')
+    expect(formatOverlay.properties.attribute_formats).to.haveOwnProperty('photoImage')
+    expect(formatOverlay.properties.attribute_formats.photoImage).to.equal('image/jpeg')
+  })
+
+  it('has character_encoding overlay', () => {
+    const json = JSON.parse(bundleToJSON(bundle))
+    const charEncodingOverlays = json.overlays.filter((o: any) => o.type === 'overlay/character_encoding/2.0.0')
+
+    expect(charEncodingOverlays).to.be.an('array')
+    expect(charEncodingOverlays).to.have.lengthOf(1)
+
+    const charEncodingOverlay = charEncodingOverlays[0]
+    expect(charEncodingOverlay).to.haveOwnProperty('properties')
+    expect(charEncodingOverlay.properties).to.haveOwnProperty('attribute_character_encodings')
+    expect(charEncodingOverlay.properties.attribute_character_encodings).to.haveOwnProperty('dateOfBirth')
+    expect(charEncodingOverlay.properties.attribute_character_encodings.dateOfBirth).to.equal('utf-8')
+    expect(charEncodingOverlay.properties.attribute_character_encodings).to.haveOwnProperty('photoImage')
+    expect(charEncodingOverlay.properties.attribute_character_encodings.photoImage).to.equal('base64')
+  })
+
+  it('has unit overlay', () => {
+    const json = JSON.parse(bundleToJSON(bundle))
+    const unitOverlays = json.overlays.filter((o: any) => o.type === 'overlay/unit/2.0.0')
+
+    expect(unitOverlays).to.be.an('array')
+    expect(unitOverlays).to.have.lengthOf(1)
+
+    const unitOverlay = unitOverlays[0]
+    expect(unitOverlay).to.haveOwnProperty('properties')
+    expect(unitOverlay.properties).to.haveOwnProperty('metric_system')
+    expect(unitOverlay.properties.metric_system).to.equal('metric')
+    expect(unitOverlay.properties).to.haveOwnProperty('attribute_units')
+    expect(unitOverlay.properties.attribute_units).to.haveOwnProperty('optionalPersonalData')
+    expect(unitOverlay.properties.attribute_units.optionalPersonalData).to.equal('centimeter')
   })
 })

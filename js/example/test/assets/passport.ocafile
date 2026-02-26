@@ -1,0 +1,123 @@
+--name=DigitalPassport
+ADD Attribute dateOfBirth=DateTime
+ADD Attribute dateOfExpiry=DateTime
+ADD Attribute dateOfIssue=DateTime
+ADD Attribute documentCode=Text
+ADD Attribute documentNumber=Text
+ADD Attribute documentType=Text
+ADD Attribute fullName=Text
+ADD Attribute issuedBy=Text
+ADD Attribute issuingState=Text
+ADD Attribute issuingStateCode=Text
+ADD Attribute nationality=Text
+ADD Attribute optionalData=Text
+ADD Attribute optionalDocumentData=Text
+ADD Attribute optionalPersonalData=Text
+ADD Attribute personalNumber=Text
+ADD Attribute photoImage=Binary
+ADD Attribute placeOfBirth=Text
+ADD Attribute primaryIdentifier=Text
+ADD Attribute secondaryIdentifier=Text
+ADD Attribute sex=Text
+ADD Attribute signatureImage=Binary
+
+ADD Overlay Meta
+  language="en"
+  name="VIZ for Digital Passport"
+  description="A form to be used for capturing Visual Inspection Zone data for a Digital Passport"
+
+ADD Overlay Meta
+  language="epo"
+  name="Cifereca pasporto"
+  description="Formo por kolekti ciferecajn pasportajn datumojn"
+
+ADD Overlay Meta
+  language="fr"
+  name="VIZ pour passeport numérique"
+  description="Un formulaire à utiliser pour capturer les données de la zone d'inspection visuelle pour un passeport numérique"
+
+ADD Overlay Meta
+  language="pl"
+  name="Passport cyfrowy"
+  description="Formularz służący do zebrania danych dotyczących paszportu cyfrowego"
+
+ADD OVERLAY Label
+  language="fr"
+  attribute_labels
+    dateOfBirth="Date de naissance"
+    dateOfExpiry="Date d'expiration"
+    dateOfIssue="Date d'émission"
+    documentCode="Code du document"
+    documentNumber="Numéro de passeport"
+    documentType="Document"
+    fullName="Nom"
+    issuedBy="Autorité ou organisme émetteur"
+    issuingState="État ou organisme émetteur (au complet)"
+    issuingStateCode="État ou organisme émetteur (en code)"
+    nationality="Nationalité"
+    optionalData="Éléments de données facultatifs"
+    optionalDocumentData="Éléments de données de document facultatifs"
+    optionalPersonalData="Éléments de données personnelles facultatifs"
+    personalNumber="Numéro personnel"
+    photoImage="Caractéristique d'identification"
+    placeOfBirth="Lieu de naissance"
+    primaryIdentifier="Identifiant principal"
+    secondaryIdentifier="Identifiant secondaire"
+    sex="Sexe"
+    signatureImage="Signature du titulaire ou marque usuelle"
+
+ADD OVERLAY ENTRY_CODE
+  attribute_entry_codes
+    documentType=["PASSPORT"]
+    sex=["F", "M", "X"]
+
+ADD OVERLAY ENTRY
+  language="fr"
+  attribute_entries
+    documentType
+      "PASSPORT"="Passport"
+    sex
+      "F"="Femelle"
+      "M"="Mâle"
+      "X"="Non spécifié"
+
+ADD OVERLAY FORMAT
+  attribute_formats
+    dateOfBirth="YYnMMnDD"
+    dateOfExpiry="YYnMMnDD"
+    dateOfIssue="YYnMMnDD"
+    documentCode="P[A-Z0-9]{1}"
+    documentNumber="[A-Z0-9]{9}"
+    issuingStateCode="[A-Z]{3}"
+    personalNumber="[A-Z0-9]{14}"
+    photoImage="image/jpeg"
+    signatureImage="image/jpeg"
+
+ADD OVERLAY CHARACTER_ENCODING
+  attribute_character_encodings
+    dateOfBirth="utf-8"
+    dateOfExpiry="utf-8"
+    dateOfIssue="utf-8"
+    documentCode="utf-8"
+    documentNumber="utf-8"
+    documentType="utf-8"
+    fullName="utf-8"
+    issuedBy="utf-8"
+    issuingState="utf-8"
+    issuingStateCode="utf-8"
+    nationality="utf-8"
+    optionalData="utf-8"
+    optionalDocumentData="utf-8"
+    optionalPersonalData="utf-8"
+    personalNumber="utf-8"
+    photoImage="base64"
+    placeOfBirth="utf-8"
+    primaryIdentifier="utf-8"
+    secondaryIdentifier="utf-8"
+    sex="utf-8"
+    signatureImage="base64"
+
+ADD OVERLAY UNIT
+  metric_system="metric"
+  attribute_units
+    optionalPersonalData="centimeter"

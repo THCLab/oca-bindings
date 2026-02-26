@@ -1,0 +1,178 @@
+{
+  "v": "OCAS02JSON0012ce_",
+  "digest": "EP5uYxlQt4P8IRNfmtXcaCB_iPt5O3o8tiamCOwIIu6s",
+  "capture_base": {
+    "digest": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+    "type": "capture_base/2.0.0",
+    "attributes": {
+      "dateOfBirth": "DateTime",
+      "dateOfExpiry": "DateTime",
+      "dateOfIssue": "DateTime",
+      "documentCode": "Text",
+      "documentNumber": "Text",
+      "documentType": "Text",
+      "fullName": "Text",
+      "issuedBy": "Text",
+      "issuingState": "Text",
+      "issuingStateCode": "Text",
+      "nationality": "Text",
+      "optionalData": "Text",
+      "optionalDocumentData": "Text",
+      "optionalPersonalData": "Text",
+      "personalNumber": "Text",
+      "photoImage": "Binary",
+      "placeOfBirth": "Text",
+      "primaryIdentifier": "Text",
+      "secondaryIdentifier": "Text",
+      "sex": "Text",
+      "signatureImage": "Binary"
+    }
+  },
+  "overlays": [
+    {
+      "digest": "EE8NA-IJOZOmM0XBGBTk5W4pyMApOle9ZW6EagnC8BLl",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/meta/2.0.0",
+      "language": "en",
+      "description": "A form to be used for capturing Visual Inspection Zone data for a Digital Passport",
+      "name": "VIZ for Digital Passport"
+    },
+    {
+      "digest": "ELPcBViB3xV1IaLhBNtxBHzrW8k6h6h0XQUpU1qBkuV4",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/meta/2.0.0",
+      "language": "epo",
+      "description": "Formo por kolekti ciferecajn pasportajn datumojn",
+      "name": "Cifereca pasporto"
+    },
+    {
+      "digest": "EEo4rzHZCnFWBNt2jF3S4FrC2RtjUTAVOp_HWH59-PX1",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/meta/2.0.0",
+      "language": "fr",
+      "description": "Un formulaire à utiliser pour capturer les données de la zone d'inspection visuelle pour un passeport numérique",
+      "name": "VIZ pour passeport numérique"
+    },
+    {
+      "digest": "EO9jK-XQo_tKCFo6u8x9kZVnUxMtqX1UpQO560lXdvqt",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/meta/2.0.0",
+      "language": "pl",
+      "description": "Formularz służący do zebrania danych dotyczących paszportu cyfrowego",
+      "name": "Passport cyfrowy"
+    },
+    {
+      "digest": "EECbNkhYqtBGBxH_AeestJHobz3OHuf0fjY1w8yHcIC0",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/label/2.0.0",
+      "language": "fr",
+      "attribute_labels": {
+        "dateOfBirth": "Date de naissance",
+        "dateOfExpiry": "Date d'expiration",
+        "dateOfIssue": "Date d'émission",
+        "documentCode": "Code du document",
+        "documentNumber": "Numéro de passeport",
+        "documentType": "Document",
+        "fullName": "Nom",
+        "issuedBy": "Autorité ou organisme émetteur",
+        "issuingState": "État ou organisme émetteur (au complet)",
+        "issuingStateCode": "État ou organisme émetteur (en code)",
+        "nationality": "Nationalité",
+        "optionalData": "Éléments de données facultatifs",
+        "optionalDocumentData": "Éléments de données de document facultatifs",
+        "optionalPersonalData": "Éléments de données personnelles facultatifs",
+        "personalNumber": "Numéro personnel",
+        "photoImage": "Caractéristique d'identification",
+        "placeOfBirth": "Lieu de naissance",
+        "primaryIdentifier": "Identifiant principal",
+        "secondaryIdentifier": "Identifiant secondaire",
+        "sex": "Sexe",
+        "signatureImage": "Signature du titulaire ou marque usuelle"
+      }
+    },
+    {
+      "digest": "EPWpTT7o6wmZDau0LU8WdYEFRD6ZL9-DomXRBusejoYq",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/entry_code/2.0.0",
+      "attribute_entry_codes": {
+        "documentType": [
+          "PASSPORT"
+        ],
+        "sex": [
+          "F",
+          "M",
+          "X"
+        ]
+      }
+    },
+    {
+      "digest": "EN6gHg077Pzg4yTncrhHLqEj9bRlIZLesd-8E2Z9T6bi",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/entry/2.0.0",
+      "language": "fr",
+      "attribute_entries": {
+        "documentType": {
+          "PASSPORT": "Passport"
+        },
+        "sex": {
+          "F": "Femelle",
+          "M": "Mâle",
+          "X": "Non spécifié"
+        }
+      }
+    },
+    {
+      "digest": "EJVrmDoUwptzmZ6JVXlQSujOK2hF7-4GjGXnSbig-Cfl",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/format/2.0.0",
+      "attribute_formats": {
+        "dateOfBirth": "YYnMMnDD",
+        "dateOfExpiry": "YYnMMnDD",
+        "dateOfIssue": "YYnMMnDD",
+        "documentCode": "P[A-Z0-9]{1}",
+        "documentNumber": "[A-Z0-9]{9}",
+        "issuingStateCode": "[A-Z]{3}",
+        "personalNumber": "[A-Z0-9]{14}",
+        "photoImage": "image/jpeg",
+        "signatureImage": "image/jpeg"
+      }
+    },
+    {
+      "digest": "ECKJ6kZ_-2gQ9noq6bpYTVgL3M39cgKcZ6Fy9-m-JbzU",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/character_encoding/2.0.0",
+      "attribute_character_encodings": {
+        "dateOfBirth": "utf-8",
+        "dateOfExpiry": "utf-8",
+        "dateOfIssue": "utf-8",
+        "documentCode": "utf-8",
+        "documentNumber": "utf-8",
+        "documentType": "utf-8",
+        "fullName": "utf-8",
+        "issuedBy": "utf-8",
+        "issuingState": "utf-8",
+        "issuingStateCode": "utf-8",
+        "nationality": "utf-8",
+        "optionalData": "utf-8",
+        "optionalDocumentData": "utf-8",
+        "optionalPersonalData": "utf-8",
+        "personalNumber": "utf-8",
+        "photoImage": "base64",
+        "placeOfBirth": "utf-8",
+        "primaryIdentifier": "utf-8",
+        "secondaryIdentifier": "utf-8",
+        "sex": "utf-8",
+        "signatureImage": "base64"
+      }
+    },
+    {
+      "digest": "EKyM0ih8fog0S5hmltoHcKPN9v6ybI1ZKqPlueHu17yp",
+      "capture_base": "ECxpGYwP8ycCeiwByn8wzopqp5zSzF6JKtZSRww2gj5q",
+      "type": "overlay/unit/2.0.0",
+      "metric_system": "metric",
+      "attribute_units": {
+        "optionalPersonalData": "centimeter"
+      }
+    }
+  ]
+}
