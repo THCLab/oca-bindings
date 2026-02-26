@@ -11,46 +11,39 @@ env:
 
 jobs:
   check:
-    runs-on: ubuntu-22.04        
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: check
-          args: --all-features --verbose --manifest-path js/wasm/Cargo.toml
+          targets: wasm32-unknown-unknown
+      - name: Cargo check
+        run: cargo check --all-features --verbose --manifest-path js/wasm/Cargo.toml
 
   clippy:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
+          targets: wasm32-unknown-unknown
           components: clippy
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --verbose --manifest-path js/wasm/Cargo.toml
+      - name: Cargo clippy
+        run: cargo clippy --all-features --verbose --manifest-path js/wasm/Cargo.toml
 
   test_oca-js_wasm:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
       - name: Install wasm-bindgen-cli
         run: cargo install wasm-bindgen-cli --version 0.2.92
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.x"
       - name: Setup yarn
         run: npm install -g yarn
       - name: Build wasm
@@ -59,7 +52,8 @@ jobs:
       - name: Install dependencies
         working-directory: js/example
         run: yarn install --network-concurrency 1
-      - working-directory: js/example
+      - name: Run tests
+        working-directory: js/example
         run: yarn test
 
   publish_oca-js_wasm:
@@ -68,25 +62,27 @@ jobs:
     needs:
       - test_oca-js_wasm
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          target: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown
       - name: Install wasm-bindgen-cli
         run: cargo install wasm-bindgen-cli --version 0.2.92
       - name: Build wasm
         working-directory: js/wasm
         run: bash build-pkg.sh
-      - uses: actions/setup-node@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "12.x"
+          node-version: "20.x"
           registry-url: "https://registry.npmjs.org"
-      - working-directory: js/wasm/pkg
+      - name: Install yarn
+        run: npm install -g yarn
+      - name: Install package dependencies
+        working-directory: js/wasm/pkg
         run: yarn install
-      - working-directory: js/wasm/pkg
+      - name: Publish to npm
+        working-directory: js/wasm/pkg
         run: yarn publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
