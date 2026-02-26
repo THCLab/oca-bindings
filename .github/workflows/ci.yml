@@ -55,6 +55,15 @@ jobs:
       - name: Install dependencies
         working-directory: js/example
         run: yarn install --network-concurrency 1
+      - name: Debug installed oca.js package
+        run: |
+          echo "=== wasm/pkg contents ==="
+          ls -la js/wasm/pkg
+          ls -la js/wasm/pkg/nodejs || true
+          echo "=== example installed module ==="
+          ls -la js/example/node_modules/oca.js || true
+          ls -la js/example/node_modules/oca.js/nodejs || true
+          cat js/example/node_modules/oca.js/package.json || true
       - name: Run tests
         working-directory: js/example
         run: yarn test
