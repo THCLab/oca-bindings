@@ -56,8 +56,9 @@ jobs:
       - name: Build wasm
         working-directory: js/wasm
         run: bash build-pkg.sh
-      - working-directory: js/example
-        run: yarn install
+      - name: Install dependencies
+        working-directory: js/example
+        run: yarn install --network-concurrency 1
       - working-directory: js/example
         run: yarn test
 
