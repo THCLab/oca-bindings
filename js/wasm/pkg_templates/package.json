@@ -12,9 +12,10 @@
     "web/*"
   ],
   "main": "nodejs/oca_js.js",
-  "types": "web/oca_js.d.ts",
+  "types": "nodejs/oca_js.d.ts",
   "browser": {
-    "./nodejs/oca_js.js": "./web/oca_js.js"
+    "./nodejs/oca_js.js": "./web/oca_js.js",
+    "./nodejs/oca_js.d.ts": "./web/oca_js.d.ts"
   },
   "sideEffects": false
 }
