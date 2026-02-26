@@ -104,4 +104,8 @@ jobs:
 
       - name: Publish to npm (OIDC)
         working-directory: js/wasm/pkg
-        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ""   # override/clear
+        run: |
+          unset NODE_AUTH_TOKEN
+          npm publish --provenance
