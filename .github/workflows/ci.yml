@@ -8,6 +8,10 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+permissions:
+  id-token: write
+  contents: read
+
 
 jobs:
   check:
@@ -84,5 +88,3 @@ jobs:
       - name: Publish to npm
         working-directory: js/wasm/pkg
         run: yarn publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
