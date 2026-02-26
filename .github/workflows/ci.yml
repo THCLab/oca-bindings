@@ -85,6 +85,18 @@ jobs:
           # (Optional but safe) ensure npm is new enough even if Node changes
       - name: Upgrade npm
         run: npm i -g npm@^11.5.1
+      - name: Ensure token auth is not used (OIDC only)
+        run: |
+          unset NODE_AUTH_TOKEN
+          unset NPM_TOKEN
+          rm -f ~/.npmrc
+          rm -f .npmrc
+
+      - name: Debug npm auth inputs
+        run: |
+          echo "NODE_AUTH_TOKEN set? " $([ -n "${NODE_AUTH_TOKEN}" ] && echo yes || echo no)
+          echo "NPM_TOKEN set? " $([ -n "${NPM_TOKEN}" ] && echo yes || echo no)
+          npm config list -l | sed -n '1,120p'
 
       - name: Install dependencies
         working-directory: js/wasm/pkg
