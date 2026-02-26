@@ -70,21 +70,28 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: wasm32-unknown-unknown
+
       - name: Install wasm-bindgen-cli
         run: cargo install wasm-bindgen-cli --version 0.2.92
+
       - name: Build wasm
         working-directory: js/wasm
         run: bash build-pkg.sh
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          node-version: "24"
           registry-url: "https://registry.npmjs.org"
-      - name: Install yarn
-        run: npm install -g yarn
-      - name: Install package dependencies
+
+          # (Optional but safe) ensure npm is new enough even if Node changes
+      - name: Upgrade npm
+        run: npm i -g npm@^11.5.1
+
+      - name: Install dependencies
         working-directory: js/wasm/pkg
-        run: yarn install
-      - name: Publish to npm
+        run: npm ci
+
+      - name: Publish to npm (OIDC)
         working-directory: js/wasm/pkg
-        run: yarn publish
+        run: npm publish
