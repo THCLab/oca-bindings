@@ -1,207 +1,306 @@
 ## JavaScript WASM Bindings
 
-This package provides JavaScript bindings for OCA (Overlays Capture
-Architecture) using WebAssembly.
-
-It expose oca-sdk-rs into Java Scritp Ecosystem.
+This package provides JavaScript/TypeScript bindings for OCA (Overlays Capture Architecture) using WebAssembly.
 
 ### Features
 
+- ✅ **Build OCA bundles** from OCAfile format
 - ✅ **Load and validate OCA bundles** from JSON
-- ✅ **Build OCA bundles** with attributes, overlays, and metadata
-- ✅ **Parse and generate AST** (Abstract Syntax Tree)
 - ✅ **Attribute validation** with overlay definitions
-- ✅ **Multiple attribute types**: Text, Numeric, Boolean, DateTime, Binary, Reference, Array, etc.
-- ✅ **Overlay support**: Meta, Label, Format, Information, CharacterEncoding, Unit, Conformances, EntryCodes, Entry, Link, and more
-- ✅ **Framing support** for ontology alignment
+- ✅ **Full OCA 2.0 support** with community overlays
 
 ### Installation
 
+#### From npm (when published)
+
 ```bash
-# Install locally
-cd oca-bindings/js
+npm install oca.js
+# or
+yarn add oca.js
+```
+
+### From local source (for development)
+
+```bash
+cd ../js/example
 yarn install
+```
 
-# Or use npm
-npm install
+The package is installed from the local `../wasm/pkg` directory using the `file:` protocol in `package.json`:
 
-# Build the WASM package
-cd wasm
+```json
+{
+  "dependencies": {
+    "oca.js": "file:../wasm/pkg"
+  }
+}
+```
+
+### Building WASM Package
+
+```bash
+cd js/wasm
+cargo install -f wasm-bindgen-cli
 bash build-pkg.sh
+```
 
-# The package will be built in the `pkg` directory
+This builds the Rust code to WebAssembly and generates JavaScript bindings in the `pkg/` directory.
+
+### Quick Start
+
+```javascript
+const {
+  buildFromOCAfile,
+  bundleToJSON,
+  getBundleAttributes
+} = require('oca.js');
+
+const overlay_file = '...'; // Load your overlay definitions
+const ocafile = `--name=my-schema
+ADD Attribute name=Text
+ADD Attribute age=Numeric
+`;
+
+const bundle = buildFromOCAfile(ocafile, overlay_file);
+
+// Note: bundleToJSON returns double-encoded JSON
+const json = JSON.parse(JSON.parse(bundleToJSON(bundle)));
+console.log(json);
+```
+
+For TypeScript:
+
+```typescript
+import {
+  buildFromOCAfile,
+  bundleToJSON,
+  getBundleAttributes
+} from 'oca.js';
+
+// ... same usage
 ```
 
 ### Usage Examples
 
-#### Basic OCA Bundle Creation
+#### Building OCA Bundles from OCAfile
 
 ```javascript
-const { OCABox, Attribute, create_nested_attr_type_from_js } = require('oca.js');
+const { buildFromOCAfile, bundleToJSON } = require('oca.js');
+const fs = require('fs');
 
-// Create a new OCA bundle
-const oca = new OCABox()
-  .addClassification("GICS:35102020")
-  .generateBundle();
+const overlay_file = fs.readFileSync('./semantic.overlayfile', 'utf8');
 
-console.log('OCA Bundle:', oca);
+const ocafile = `--name=driving-licence
+ADD Attribute name=Text
+ADD Attribute age=Numeric
+ADD Attribute birthdate=DateTime
+
+ADD Overlay Meta
+  language="en"
+  name="Driving Licence"
+  description="Driving licence schema"
+
+ADD OVERLAY Label
+  language="en"
+  attribute_labels
+    name="Full Name"
+    age="Age"
+    birthdate="Birth Date"
+`;
+
+const bundle = buildFromOCAfile(ocafile, overlay_file);
+const json = JSON.parse(JSON.parse(bundleToJSON(bundle)));
 ```
 
-#### Adding Attributes
+#### Loading OCA Bundles from JSON
 
 ```javascript
-const numericType = create_nested_attr_type_from_js("Numeric");
-const oca = new OCABox()
-  .addClassification("GICS:35102020")
-  .addAttribute(
-    new Attribute("age")
-      .setAttributeType(numericType)
-      .setLabel({ eng: "Age", pol: "Wiek" })
-      .setFormat("0-120")
-  )
-  .generateBundle();
+const {
+  loadBundle,
+  getBundleAttributes,
+  getBundleClassification,
+  bundleToJSON
+} = require('oca.js');
+const fs = require('fs');
+
+const overlay_file = fs.readFileSync('./semantic.overlayfile', 'utf8');
+const oca_bundle_json = JSON.parse(fs.readFileSync('./oca_bundle.json', 'utf8'));
+
+const bundle = loadBundle(JSON.stringify(oca_bundle_json), overlay_file);
+
+// Get attributes (returns Map)
+const attributes = getBundleAttributes(bundle);
+const keys = attributes instanceof Map
+  ? Array.from(attributes.keys())
+  : Object.keys(attributes);
+
+// Convert to JSON
+const json = JSON.parse(bundleToJSON(bundle));
 ```
 
-#### Working with Multiple Languages
+#### Validating OCA Bundles
 
 ```javascript
-const oca = new OCABox()
-  .addClassification("GICS:35102020")
-  .addMeta("name", {
-    eng: "Driving Licence",
-    pol: "Prawo Jazdy"
-  })
-  .addMeta("description", {
-    eng: "DL desc",
-    pol: "PJ desc"
-  })
-  .generateBundle();
+const { buildFromOCAfile, validateBundleSemantics } = require('oca.js');
+
+const overlay_file = '...';
+const ocafile = `--name=test-schema
+ADD Overlay Meta
+  language="en"
+  name="Test Schema"
+  description="Test description"
+`;
+
+const bundle = buildFromOCAfile(ocafile, overlay_file);
+const bundleObj = JSON.parse(bundle);
+
+const result = validateBundleSemantics(bundleObj);
+
+console.log('Valid:', result.valid);
+console.log('Errors:', result.errors);
 ```
 
-#### Parsing Existing OCA Bundles
+#### Working with Attributes
 
 ```javascript
-const oca_bundle_json = require('./path/to/oca.json');
-const oca_box = new OCABox()
-  .load(oca_bundle_json)
-  .addClassification("test_classification");
+const {
+  addAttributeToBundle,
+  addOverlayToBundle,
+  createBundleWithAttributes
+} = require('oca.js');
 
-const attributes = oca_box.attributes();
-const meta = oca_box.meta();
+// Create bundle with attributes
+const attributes = {
+  attr_name: 'Text',
+  attr_age: 'Numeric',
+  attr_email: 'Text'
+};
 
-console.log('Attributes:', attributes);
-console.log('Metadata:', meta);
+const bundle = createBundleWithAttributes('my_classification', attributes);
+
+// Add attribute to existing bundle
+bundle = addAttributeToBundle(bundle, 'attr_phone', 'Text');
+
+// Add overlay
+const overlayProperties = {
+  language: 'en',
+  name: 'My Schema',
+  description: 'Test description'
+};
+
+bundle = addOverlayToBundle(bundle, 'meta', 'meta', overlayProperties);
 ```
 
-#### Generating AST
+### API Reference
 
-```javascript
-const oca_box = new OCABox().load(oca_bundle_json);
-const ast = oca_box.toAST();
+#### Bundle Creation & Loading
 
-console.log('AST Version:', ast.version);
-console.log('Commands:', ast.commands);
-```
+- `buildFromOCAfile(ocafile_str, overlay_file) → Bundle` - Build OCA bundle from OCAfile format
+- `loadBundle(json_str, overlay_file) → Bundle` - Load OCA bundle from JSON string
+- `createBundleWithAttributes(classification, attributes) → Bundle` - Create new bundle with attributes
 
-#### Attribute Types Support
+#### Bundle Query Functions
 
-```javascript
-const textType = create_nested_attr_type_from_js("Text");
-const numericType = create_nested_attr_type_from_js("Numeric");
-const booleanType = create_nested_attr_type_from_js("Boolean");
-const dateTimeType = create_nested_attr_type_from_js("DateTime");
-const binaryType = create_nested_attr_type_from_js("Binary");
+- `getBundleAttributes(bundle) → Map | Record` - Get bundle attributes (returns Map)
+- `getBundleClassification(bundle) → string` - Get bundle classification
+- `getBundleDigest(bundle) → string` - Get bundle digest (SAID)
+- `getBundleVersion(bundle) → string` - Get OCA version
+- `getBundleType(bundle) → string` - Get bundle type
+- `getBundleFlaggedAttributes(bundle) → any` - Get flagged attributes
+- `getOverlayCount(bundle) → number` - Get number of overlays
+- `getOverlayNames(bundle) → any` - Get overlay names
+- `hasOverlays(bundle) → boolean` - Check if bundle has overlays
 
-// Create array types
-const arrayType = create_nested_attr_type_from_js(["Text"]);
-const arrayTypeWithRef = create_nested_attr_type_from_js(["refs:ABC123"]);
+#### Bundle Modification
 
-// Reference to another bundle
-const refType = create_nested_attr_type_from_js("refs:EF5ERATRBBN_ewEo9buQbznirhBmvrSSC0O2GIR4Gbfs");
-```
+- `addAttributeToBundle(bundle, attribute_name, attribute_type) → Bundle` - Add attribute to bundle
+- `removeAttributeFromBundle(bundle, attribute_name) → Bundle` - Remove attribute from bundle
+- `addOverlayToBundle(bundle, overlay_name, overlay_type, properties) → Bundle` - Add overlay to bundle
+- `removeOverlayFromBundle(bundle, overlay_name) → Bundle` - Remove overlay from bundle
 
-#### Overlays
+#### Serialization & Generation
 
-The OCA bundle supports various overlay types:
+- `bundleToJSON(bundle) → string` - **Returns double-encoded JSON string** (use `JSON.parse(JSON.parse(...))`)
+- `generateOCAfile(bundle, overlay_file) → string` - Generate OCAfile from bundle
+- `parseOCAfile(ocafile_str, overlay_file) → any` - Parse OCAfile
 
-```javascript
-const oca = new OCABox()
-  .addClassification("GICS:35102020")
-  .addMeta("name", { eng: "Name" })
-  .addMeta("description", { eng: "Description" })
-  .addAttribute(
-    new Attribute("attr_name")
-      .setAttributeType(numericType)
-      .setLabel({ eng: "Name: " })
-      .setInformation({ eng: "En info" })
-      .setEntries({
-        o1: { eng: "Option 1", pol: "Opcja 1" },
-        o2: { eng: "Option 2", pol: "Opcja 2" }
-      })
-      .setLinks({ "target_bundle_said": "name" })
-      .setFramings({
-        frame_id: "SNOMEDCT",
-        frame_label: "Clinical Terms",
-        frame_location: "https://bioportal.bioontology.org/ontologies/SNOMEDCT",
-        frame_version: "2023AA"
-      }, {
-        "http://purl.bioontology.org/ontology/snomedct/703503000": {
-          predicate_id: "skos:exactMatch",
-          framing_justification: "semapv:ManualMappingCuration",
-        }
-      })
-  )
-  .generateBundle();
-```
+#### Validation
 
-### Validation
+- `validateBundleSemantics(bundle) → { valid: boolean, errors: string[] }` - Validate bundle semantics
 
-```javascript
-const { Validator } = require('oca.js');
-const oca = new OCABox().addClassification("GICS:35102020").generateBundle();
-const validator = new Validator();
+#### Types
 
-const result = validator.validate(oca);
-console.log('Valid:', result.success);
-if (!result.success) {
-  console.log('Errors:', result.errors);
+- `AttributeType` - Enum: `Boolean`, `Binary`, `Text`, `Numeric`, `DateTime`
+- `Encoding` - Enum: `Base64`, `Utf8`, `Iso8859_1`, `Utf16`, `Utf16Be`, `Utf16Le`
+
+### Important Notes
+
+#### OCA 2.0 Format Changes
+
+This library uses OCA 2.0 format:
+
+1. **Overlays are now arrays**: `overlays` is an array instead of an object
+2. **Overlay type format**: Changed from `spec/overlays/label/1.0` to `overlay/label/2.0.0`
+3. **Digest key**: Uses `digest` instead of `d`
+4. **Language codes**: Uses `en`, `fr`, `pl` instead of `eng`, `fra`, `pol`
+5. **Properties nesting**: Overlay properties are under a `properties` key
+
+Example OCA 2.0 structure:
+```json
+{
+  "digest": "E...",
+  "capture_base": {
+    "digest": "E...",
+    "type": "capture_base/2.0.0",
+    "attributes": {}
+  },
+  "overlays": [
+    {
+      "digest": "E...",
+      "type": "overlay/meta/2.0.0",
+      "properties": {
+        "language": "en",
+        "name": "My Schema"
+      }
+    }
+  ]
 }
 ```
 
-### TypeScript Support
+#### Double JSON Encoding
 
-The bindings include TypeScript definitions. You can use them in TypeScript projects:
+The `bundleToJSON()` function returns a JSON-encoded string of JSON structure:
 
-```typescript
-import { OCABox, Attribute, create_nested_attr_type_from_js } from 'oca.js';
-
-const numericType = create_nested_attr_type_from_js("Numeric");
-const oca = new OCABox()
-  .addClassification("GICS:35102020")
-  .addAttribute(
-    new Attribute("age")
-      .setAttributeType(numericType)
-      .setLabel({ eng: "Age" })
-  )
-  .generateBundle();
+```javascript
+const json = JSON.parse(JSON.parse(bundleToJSON(bundle)));
 ```
 
-### Running Tests
+This is a quirk of the wasm-bindgen implementation.
+
+#### Map vs Object
+
+`getBundleAttributes()` returns a JavaScript `Map`, not a plain object:
+
+```javascript
+const attributes = getBundleAttributes(bundle);
+const keys = attributes instanceof Map
+  ? Array.from(attributes.keys())
+  : Object.keys(attributes);
+```
+
+### Running Examples
 
 ```bash
-# Install dependencies
 cd example
-yarn install
-# or
-npm install
+
+# Run the example script
+yarn example
 
 # Run all tests
 yarn test
-# or
-npm test
 
 # Run a specific test
-yarn test parsing-oca.test.ts
+yarn test building-oca.test.ts
 ```
 
 ### Build Process
@@ -213,6 +312,10 @@ The build process uses `wasm-bindgen` to compile Rust code to JavaScript:
 3. **Package generation**: Creates npm package in `pkg/` directory
 4. **TypeScript definitions**: Automatically generated from Rust code
 
+### Documentation
+
+For detailed API documentation and more examples, see [wasm/README.md](./wasm/README.md).
+
 ### License
 
 **EUPL-1.2** (European Union Public License)
@@ -221,5 +324,4 @@ The build process uses `wasm-bindgen` to compile Rust code to JavaScript:
 
 - [OCA Specification](https://github.com/the-human-colossus-foundation/oca-spec)
 - [OCA SDK](https://github.com/THCLab/oca-sdk-rs)
-- [OCA Bindings (Dart)](./dart)
-- [OCA Bindings (Flutter)](./dart)
+- [OCA Bindings (Dart)](../dart)

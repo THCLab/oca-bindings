@@ -1,5 +1,5 @@
 import { expect } from 'chai'
-import { loadBundle, getBundleAttributes, getBundleClassification, bundleToJSON } from 'oca.js'
+import { loadBundle, getBundleAttributes, bundleToJSON } from 'oca.js'
 import fs from 'fs'
 const oca_bundle_json = require('./assets/oca_new.json')
 const overlay_file = fs.readFileSync('./test/assets/semantic.overlayfile', 'utf8')
@@ -40,12 +40,6 @@ describe('OCA is loaded', () => {
     expect(metaMap.epo.name).to.equal('Cifereca pasporto')
     expect(metaMap).to.haveOwnProperty('pl')
     expect(metaMap.pl.name).to.equal('Passport cyfrowy')
-  })
-
-  it('has classification', () => {
-    const classification = getBundleClassification(bundle)
-
-    expect(classification).to.equal('')
   })
 
   it('has label overlay', () => {

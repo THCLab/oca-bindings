@@ -46,7 +46,6 @@ describe('Malformed OCA Bundle', () => {
     capture_base: {
       digest: said,
       type: 'capture_base/2.0.0',
-      classification: 'GICS:35102020',
       attributes: {}
     },
     overlays: []

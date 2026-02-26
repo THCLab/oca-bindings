@@ -6,7 +6,7 @@ const overlay_file = fs.readFileSync('./test/assets/semantic.overlayfile', 'utf8
 
 describe('Parsing attribute types', () => {
   it('should create bundles with different attribute types', () => {
-    const ocafile = `--name=test-classification
+    const ocafile = `--name=test1
 ADD Attribute attribute1=Numeric
 ADD Attribute attribute2=Text
 ADD Attribute attribute3=Boolean
