@@ -3,3 +3,5 @@ dart/target
 js/example/node_modules
 js/example/target
 js/example/yarn.lock
+python/.venv/
+python/target

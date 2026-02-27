@@ -1,0 +1,18 @@
+[package]
+name = "oca-python"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "oca_sdk"
+crate-type = ["cdylib"]
+
+[dependencies]
+oca-sdk-rs = { path = "../../oca-sdk-rs" }
+recursion = "0.5.1"
+serde = "1.0"
+serde_json = "1.0"
+
+[dependencies.pyo3]
+version = "0.21"
+features = ["extension-module"]
